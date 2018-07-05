@@ -1,3 +1,4 @@
+from .models import GameSession,Player_DB
 from .cards import LandMarks,CardDex,Card
 import random
 import time
@@ -366,12 +367,11 @@ class Player:
         self.hand = []
         self.landmark = copy.copy(LandMarks)
 
-
-
 # Business/Controller Logic below.
 
+
 class GameController:
-    # game logic lives here, every view cycle, data is loaded from models,
+    # game logic lives here to be called by ,
     # processed and saved back to model. the rationale being doing database query for
     # many times during each simulation cycle would be computationally wasteful
     def __init__(self,serial):
