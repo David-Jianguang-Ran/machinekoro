@@ -51,6 +51,7 @@ class GameState:
             # returns a query object with allowed dice options
             query = {
                 "channel_name": current_player.channel_name,
+                'type':"action.query" ,
                 "player_num" : current_player.num,
                 "q_type":"dice_query_a"
             }
@@ -68,6 +69,7 @@ class GameState:
             # returns the  list of queries to active player to choose which diceroll to apply
             query = {
                 "channel_name": current_player.channel_name,
+                'type': "action.query",
                 "player_num": current_player.num,
                 "q_type": "dice_query_b",
                 "options": self.diceroll
@@ -81,6 +83,7 @@ class GameState:
             if current_player.landmark['Harbor'] == 1 and self.activation >= 10:
                 query = {
                     "channel_name": current_player.channel_name,
+                   'type':"action.query" ,
                     "player_num": current_player.num,
                     "q_type": "dice_query_c",
                     "options": [True,False]
@@ -88,6 +91,7 @@ class GameState:
             else:
                 query = {
                     "channel_name": None,
+                    'type':"action.query" ,
                     "player_num": current_player.num,
                     "q_type": "dice_query_c",
                     "options": [True, False]
@@ -96,6 +100,9 @@ class GameState:
 
         elif phase == 'activation':
             query_list = self.msg_list
+            # ??? what the hell is this? what does this do?
+            # answer: no query is prepared here because query from card activation must be generated
+            # when the card action is applied, therefore here we only copy queries from an attribute and return them
             """ If not query list return none
             if not query_list:
                 query_list = [{
@@ -121,6 +128,7 @@ class GameState:
                     options.append(some_card.name)
             query_list = [{
                 "channel_name": current_player.channel_name,
+                'type': "action.query",
                 "player_num": current_player.num,
                 "q_type": "card_play_query",
                 "options": options
@@ -133,6 +141,7 @@ class GameState:
             if tSU in current_player.hand and current_player.coin > 0 :
                 query_list = [{
                     "channel_name": current_player.channel_name,
+                    'type':"action.query",
                     "player_num": current_player.num,
                     "q_type": "invest_query",
                     "options": [True,False]

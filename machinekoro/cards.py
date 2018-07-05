@@ -310,10 +310,11 @@ class Card:
                     keys.append(entry.key())
             if total > 1:
                 query = {
-                    "channel_name": None,
+                    "channel_name": active_player.channel_name,
                     "player_num": active_player.num,
                     "q_type": "card_query_demo",
-                    'options': keys
+                    'options': keys,
+                    'type':"action.query"
                 }
                 if len(query['options']) == 1:
                     query['channel_name'] = None
@@ -357,7 +358,8 @@ class Card:
                 "channel_name": active_player.channel_name,
                 "player_num": active_player.num,
                 "q_type": "card_query_move",
-                'options': [names,target]
+                'options': [names,target],
+                'type':"action.query"
             }
             if len(names) == 1 and len(target) == 1:
                 query['channel_name'] = None
@@ -477,7 +479,8 @@ class Card:
                 "channel_name": active_player.channel_name,
                 "player_num": active_player.num,
                 "q_type": "card_query_trade",
-                'options': [choice_s,choice_t]
+                'options': [choice_s,choice_t],
+                'type':"action.query"
             }
             return query
 
