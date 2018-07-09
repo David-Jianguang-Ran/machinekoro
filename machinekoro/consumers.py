@@ -1,4 +1,4 @@
-from channels.generic.websocket import SyncConsumer,AsyncConsumer,AsyncWebsocketConsumer
+from channels.generic.websocket import SyncConsumer,AsyncConsumer,AsyncJsonWebsocketConsumer
 from asgiref.sync import async_to_sync,sync_to_async
 import asyncio
 import json
@@ -12,7 +12,7 @@ from . import models
 #   should bot socket be 'dedicated' to each botplayer? or should to be shared by all the bots? should it persist?
 
 
-class PlayerSocket(AsyncWebsocketConsumer):
+class PlayerSocket(AsyncJsonWebsocketConsumer):
     # this is a Player ws consumer object,
     # the channel_layer group attribute reflect the game "room" the player is in
     # methods connect, disconnect and recieve has been defined
@@ -30,9 +30,8 @@ class PlayerSocket(AsyncWebsocketConsumer):
         })
 
     async def msg_to_client(self, event):
-        # change to action query to match new message scheme
-        text = json.dumps(event)
-        self.send(text_data=text)
+        # passes message onto client over ws
+        await self.send_json(event)
 
     async def disconnect(self, code):
         # disconnects from room
@@ -47,47 +46,33 @@ class PlayerSocket(AsyncWebsocketConsumer):
         self.dealer_channel_name = event['dealer_channel_name']
         if event['prime_player']:
             self.prime = True
-        pass
-
-    async def admin_command(self,event):
-        # this method takes message from ws, checks if player is prime, if so, pass on messages
-        if self.prime:
-            msg = {
-                "type":event['subtype'],
-                "arguments":"arguments"
-            }
-            await self.channel_layer.send(self.dealer_channel_name,msg)
-        else:
-            print("unsucessful admin command by player",str(self.player_num),"in game",str(self.game_serial))
-
-    async def query_response(self,event):
-        # gets query response message from ws connection, forwards to dealer
-        await self.channel_layer.send(self.dealer_channel_name,event)
+        client_msg = {
+            "c_type":"client.init",
+            "player_num":self.player_num
+        }
+        await self.send_json(client_msg)
 
     async def initialize_player(self):
         # dummy event handler put here to prevent potential errors
         # remove during optimization
         pass
 
-    """ maybe i don't need this recieve method if the messages are routed by django channels 
-        async def receive(self, text_data=None, **kwargs):
-            # this method is called when a ws msg from client is recieved
-            #  action_query , world_update
-            data_obj = json.loads(text_data)
-            mode = data_obj['subtype']
-            if mode == 'msg_to_dealer':
-                data_obj['type'] = ""
-                await self.channel_layer.send(
-                    self.dealer_channel_name,data_obj)
-            elif mode == 'admin_cmd' and self.prime :
-                await self.channel_layer.send(
-                    self.dealer_channel_name,data_obj)
-            else:
-                await self.send({
-                    "mode":'error',
-                    'error_msg':'unknown subtype'
-                })
-                """
+    async def receive_json(self, content, **kwargs):
+        # this method is called when a ws msg from client is recieved
+        #
+        mode = content['c_type']
+        if mode == 'query_response':
+            content['type'] = "query.response"
+            await self.channel_layer.send(
+                self.dealer_channel_name,content)
+        elif mode == 'admin_cmd' and self.prime:
+            await self.channel_layer.send(
+                    self.dealer_channel_name,content)
+        else:
+            await self.send_json({
+                "mode":'error',
+                'error_msg':'unknown subtype'
+            })
 
 
 class BotSocket(SyncConsumer):
@@ -171,28 +156,29 @@ class DealerSocket(AsyncConsumer):
             }
         await self.channel_layer.send(
             register_entry['channel_name'],response)
-        await self.channel_layer.group_send()
+        await self.update_main()
 
     async def update_main(self):
         # this method broadcasts the current world state into the room
+        # prepare_json object
         state_json = await json.dumps(self.game_obj.current_state)
         await self.channel_layer.group_send(
             self.game_obj.serial, {
                 'type': 'msg.to.client',
-                'subtype':'world_update',
+                'c_type':'world_update',
                 'content': state_json
             })
 
     async def update_lobby(self):
         # this method broadcasts everything needed for lobby
         data = await self.game_obj.get_lobby_display()
-        state_json = await json.dumps(data)
+        lobby_json = await json.dumps(data)
         await self.channel_layer.group_send(
                 self.game_obj.serial,
             {
-                'type': 'msg_to_client',
-                'subtype':'lobby_update',
-                'content': state_json ,
+                'type': 'msg.to.client',
+                'c_type':'lobby_update',
+                'content': lobby_json ,
                 "dealer_channel_name" :self.channel_name
         })
 

@@ -18,7 +18,8 @@ query = {
 # finally processed by advance_state from within the run_game function
 
 response = {
-    'type': "query.response",
+    'c_type': "query_response",
+    'type': "query.response", # added by playersocket
     "player_num": active_player.num, # matches the query.player.num
     "q_type": "card_query_move", # subtype used in advance_state
     'choices': ['name','target']
