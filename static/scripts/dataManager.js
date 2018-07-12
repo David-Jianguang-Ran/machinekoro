@@ -39,5 +39,6 @@ export class WebSocketManager {
     }
 }
 
+export default WebSocketManager
 
 
