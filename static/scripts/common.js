@@ -11,7 +11,7 @@ import Menu from "./menu";
 // - Help Overlay
 // common for all views
 
-class commonComponent extends React.Component{
+class CommonComponent extends React.Component{
     render(){
         return(
             <div id={'common_bar'}>
@@ -23,4 +23,4 @@ class commonComponent extends React.Component{
     }
 }
 
-export default commonComponent
+export default CommonComponent

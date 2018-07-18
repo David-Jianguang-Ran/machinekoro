@@ -23,7 +23,7 @@ class HelpOverlay extends React.Component {
         this.render = this.render.bind(this); // I hope this binding doesn't break things invisible to me
     }
     buttonClickHandler(){
-        this.state.expanded = ! this.state.expanded
+        this.setState({expanded: ! this.state.expanded})
     }
     render(){
         if (this.state.expanded) {
