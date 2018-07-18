@@ -13,9 +13,9 @@ from . import models
 
 
 class PlayerSocket(AsyncJsonWebsocketConsumer):
-    # this is a Player ws consumer object,
-    # the channel_layer group attribute reflect the game "room" the player is in
-    # methods connect, disconnect and recieve has been defined
+    """this is a Player ws consumer object,
+    the channel_layer group attribute reflect the game "room" the player is in
+    methods connect, disconnect and recieve has been defined"""
     async def connect(self):
         # connect to the room specified in url
         self.game_serial = self.scope['url_route']['kwargs']['serial']
@@ -76,15 +76,17 @@ class PlayerSocket(AsyncJsonWebsocketConsumer):
 
 
 class BotSocket(SyncConsumer):
-    # this consumer does not send any messages over WS
-    # BotSocket reads message in "room" and drives the ai with it
-    # bots are initialized via http requests sent from prime player in lobby
+    """this consumer does not send any messages over WS
+    BotSocket reads message in "room" and drives the ai with it
+    bots are initialized via http requests sent from prime player in lobby"""
     def initialize_bot(self):
         self.lorax = models.TreeSearchController()
     pass
 
 
 class DealerSocket(AsyncConsumer):
+    """ this consumer is instanciated by a url poke and will process game state change and
+    serve as the central authority of game state"""
     # i do wonder if processing post dice_roll user inputs would benefit from being async
     async def http_request(self,event):
         # can i just call views from views.py from here?

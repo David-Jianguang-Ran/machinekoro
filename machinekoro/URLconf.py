@@ -1,8 +1,7 @@
 from django.urls import path
-from .views import static_view,react_enabled_view,js_enabled_view
+from .views import cover_view,main_view
 
 urlpatterns = [
-    path('', static_view, name='static'),
-    path('js/', js_enabled_view, name='js'),
-    path('react/',react_enabled_view,name='react')
+    path('', cover_view, name='static'),
+    path('react/', main_view, name='react')
 ]

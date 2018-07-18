@@ -18,6 +18,6 @@ from django.urls import path,include
 from machinekoro import URLconf
 
 urlpatterns = [
-    path('scratchy/', include(URLconf)),
+    path('machinekoro/', include(URLconf)),
     path('admin/', admin.site.urls),
 ]

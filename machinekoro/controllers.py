@@ -1,11 +1,11 @@
-from .models import GameSession,Player_DB
-from .cards import LandMarks,CardDex,Card
-import random
-import time
+import copy
 import json
 import math
-import copy
+import random
+import time
 
+from .cards import LandMarks,CardDex,Card
+from .models import GameSession,Player_DB
 
 # utility functions
 def diag_print(content,override=None):
@@ -21,17 +21,19 @@ Diag = True
 
 # In-memory Data Obj below
 class GameState:
+    """
+    this obj records the game state and has methods to process legal state changes
+     the game evolves by the following cycle
+     ---> get_legal_moves                     advance_state ---> self
+               |         massage director           |
+               |____ query > decision > response ___|
+                         (player or bot)
+     the queries are gathered by get legal moves,
+     send them over channels
+     response is gathered or redirected by the massage director
+     then world is modified during (only during) advance state
+     market is a dict of there lists """
     def __init__(self,player_list):
-        # the game evolves by the following cycle
-        # ---> get_legal_moves                     advance_state ---> self
-        #           |         massage director           |
-        #           |____ query > decision > response ___|
-        #                     (player or bot)
-        # the queries are gathered by get legal moves,
-        # send them over channels
-        # response is gathered or redirected by the massage director
-        # then world is modified during (only during) advance state
-        # market is a dict of there lists
         self.market = Market()
         self.tracker = 1
         self.players = player_list
@@ -302,6 +304,8 @@ class GameState:
 
 
 class Market:
+    """ this obj records the state of the marketplace, the card repo that all players draw from
+    method to replenish cards and handle player 'build' actions"""
     def __init__(self):
         self.data = copy.deepcopy(CardDex)
         self.low = []
@@ -309,6 +313,7 @@ class Market:
         self.purple = []
 
     def pop_card(self,card_name):
+        # add method to check if player can afford and charge accordingly
         if card_name in self.low:
             name = self.low.pop(card_name)
             self.replenish_low()
@@ -368,6 +373,7 @@ class Market:
 
 
 class Player:
+    """ in memory obj used to keep track of player status"""
     def __init__(self,num,channel_name=None,name=None):
         self.name = name
         self.num = num
@@ -380,13 +386,13 @@ class Player:
 
 
 class GameController:
-    # game logic lives here to be called by ,
-    # processed and saved back to model. the rationale being doing database query for
-    # many times during each simulation cycle would be computationally wasteful
-    def __init__(self,serial):
-        self.serial = serial
-        self.db_obj = GameSession(serial=serial,tracker=1)
-        self.current_state = []
+    """
+    this controller only handles save. load from models to a state object
+    actual game logic is implemented in the state obj itself
+    """
+    def __init__(self,new_game=False):
+        #hold up!
+        pass
 
     def __str__(self):
         return str(self.db_obj)
@@ -427,8 +433,12 @@ class GameController:
 
 
 class TreeSearchController:
-    # the Core of the program is MCT Search borrowed from Jeff Bradberry,
+    """
+    this object is the substitue obj for game controller for bots
+    it 'holds' a game state obj the game way game controller does and does MCTS to it
+    # the Core of the program is Monte Carlo Tree Search borrowed from Jeff Bradberry
     # there will be more info but I just want to thank him here first
+    """
     def __init__(self, current_state, max_moves=10, max_time=30, c=1.4):
         self.states = [current_state]
         self.wins = {}
