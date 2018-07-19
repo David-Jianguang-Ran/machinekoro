@@ -18,7 +18,7 @@ query = {
 # finally processed by advance_state from within the run_game function
 
 response = {
-    'c_type': "query_response",
+    'client_key': "query_response",
     'type': "query.response", # added by playersocket
     "player_num": active_player.num, # matches the query.player.num
     "q_type": "card_query_move", # subtype used in advance_state
@@ -32,3 +32,12 @@ msg = {
     'arguments':"arguments"
 }
 
+
+# world state update object send from dealer socket to player socket and later to client
+world_update = {
+    'type':"msg.to.client",
+    'client_key' : "lobby_update",
+    'dealer_channel_name':"some channel name",
+    'game_phase' : "lobby",
+    'content': 'game or lobby json'
+}

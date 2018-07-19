@@ -4,8 +4,12 @@ import math
 import random
 import time
 
+from . import models
 from .cards import LandMarks,CardDex,Card
-from .models import GameSession,Player_DB
+
+
+
+# all the models.py interactions must happens here!
 
 # utility functions
 def diag_print(content,override=None):
@@ -43,7 +47,6 @@ class GameState:
         # pre_roll > post_roll > pre_activation > post_activation > post_card_play > Pre_roll
         self.phase = 'pre_roll'
         self.msg_list = []
-        self.humans = 0
 
     def get_legal_moves(self):
         # this function now returns a query object with intended player, and possible action
@@ -250,11 +253,12 @@ class GameState:
 
         elif phase == "post_activation":
             # takes state and play card action and modifies and returns the state
-            # remember to charge for cards
+            # remember to charge for cards!!!
             for response in query_response_all:
                 if response['player_num'] == current_player.num and response['q_type'] == 'card_play_query':
                     card_decision = response['choices']
                     card = self.market.pop_card(card_decision)
+                    current_player.coin -= card.cost
                     current_player.hand.append(card)
             self.phase = 'post_card_play'
 
@@ -276,7 +280,7 @@ class GameState:
         count = len(self.players)
         num = self.tracker % len(self.players)
         if num == 0:
-            num == count
+            num = count
         cp = self.select_player_by_num(num)
         return cp
 
@@ -390,46 +394,43 @@ class GameController:
     this controller only handles save. load from models to a state object
     actual game logic is implemented in the state obj itself
     """
-    def __init__(self,new_game=False):
-        #hold up!
+    def __init__(self):
+        self.current_state = None
+        self.register = {}
         pass
 
-    def __str__(self):
-        return str(self.db_obj)
+    # not planned for current version!
+    # def load_game_from_db(serial):
 
-    # def load_from_db(self,serial):
-    # maybe implement for super-users
+    @staticmethod
+    def new_game(self):
+        """this method starts a new game with the current unix time as the game serial
+        this method returns the game serial"""
+        current_unix_time = int(time.time())
 
-    def save_player_to_db(self,player,mascot_code=None,):
-        game = self.db_obj
-        name = player.name
-        coin = player.coin
-        hand = json.dumps(player.hand)
-        landmark = json.dumps(player.landmark)
-        player_db = Player_DB(
-            name=name,
-            coin = coin,
-            hand=hand,
-            landmark=landmark,
-            game = game
-        )
-        if mascot_code != None:
-            player_db.mascot_code = mascot_code
-        player_db.save()
-        diag_print((str(player.name)+"save to db"))
-        pass
+
+    @staticmethod
+    def check_game_serial(serial):
+        """ this method takes a game serial and looks up db,
+        if the game does exist it returns true else false"""
+        all_game_db_obj = models.GameSession.Objects.all()
+        serial_list = [game.serial for game in all_game_db_obj]
+        if serial in serial_list:
+            return True
+        else:
+            return False
+
+    def make_new_game_state(self):
+        player_list = []
+        for num in range(1,len(self.register)):
+            player = Player(num,self.register['channel_name'])
+            player.hand = ["Wheat Field", "Bakery"]
+            player_list.append(player)
+            num += 1
+        self.current_state = GameState(player_list)
 
     def get_lobby_display(self):
-        # this method is for making data obj for the game lobby
-        players = Player_DB.objects.filter(game=self.db_obj).order_by('id')
-        data = []
-        for player in players:
-            p = {
-                'name' : player.name,
-            'mascot' : player.mascot_code # dont forget mascot system hasn't been built
-            }
-            data.append(p)
-        return data
+        pass
 
 
 class TreeSearchController:
