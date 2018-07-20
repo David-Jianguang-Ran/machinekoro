@@ -11,9 +11,13 @@ def cover_view(request):
     return render(request, 'static.html')
 
 
-def main_view(request,serial):
-    socker_url = "ws://127.0.0.1:8000/ws/consumers/" + str(serial)
-    context = {
-        "socket_url":socker_url
-    }
-    return render(request, 'reactEnabled.html',context)
+def new_game_poke(request):
+    pass
+
+
+def join_game_poke(request):
+    pass
+
+
+def main_view(request):
+    pass
