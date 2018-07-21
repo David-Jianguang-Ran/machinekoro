@@ -118,13 +118,92 @@ class MatchController:
         # not very sure about this
         pass
 
+
 class GameController:
     """
-    this object is used to manage loading/unloading and running the game
+    this object is used to manage loading/saving and running the game
+
+    O methods callable by State processor:
+
+    - initialize_state
+
+    - get_query_set
+
+    - process_query_response
 
     """
-    def __init__(self):
+    def __init__(self, match_id=None):
+        self.current_state = None
+        self.match_id = None
+        if match_id:
+            self.__load_state_from_db(match_id)
+            self.match_id = match_id
+
+    def initialize_state(self,player_count):
+        """
+
+        :param player_count:
+        :return: None
+        """
+        self.current_state = "some state obj"
+        self.match_id = "some match id"
         pass
+
+    def get_query_set(self):
+        """
+        you must have a state loaded in self.current_state before calling this method
+        :return: query set to be distributed by player prime's consumer
+        """
+        query_set = []
+        return query_set
+
+    def process_query_response(self,response_set):
+        """
+        this methods takes a response set and apply all decisions from them then advance state
+        :param response_set: response objs sent from player prime
+        :return:
+        """
+
+        self.__save_state_to_db(self.current_state,self.match_id)
+        pass
+
+    def __load_state_from_db(self, match_id):
+        """
+        this method loads db obj by game id,
+        :param match_id:
+        :return: nothing, modifys self.current_state
+        """
+        matchsession = models.MatchSession.objects.get(match_id=match_id)
+        tracker = json.loads(matchsession.tracker)
+        market = json.loads(matchsession.market)
+        players = json.loads(matchsession.player_list)
+        self.current_state = game_state.GameState(players,market,tracker)
+
+    @staticmethod
+    def __save_state_to_db(state, match_id):
+        """
+        this method takes a state and write data to corresponding MatchSession model
+        :param state:
+        :param match_id: session uuid string
+        :return: Nothing, it just modifis db
+        """
+        # prepare json from state
+        tracker_json = json.dumps({
+            "hand_count": state.hand_count,
+            "active_player": state.hand_count % len(state.players),
+            "phase": state.phase
+        })
+        market_json = json.dumps(state.market)
+        player_list_json = json.dumps(state.players)
+
+        # save data to db
+        match = models.MatchSession.objects.filter(match_id=match_id)
+        match.update(
+            tracker=tracker_json,
+            market=market_json,
+            player_list=player_list_json
+        )
+        match.save()
 
 
 class SearchController:

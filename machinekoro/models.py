@@ -35,9 +35,11 @@ class MatchSession(models.Model):
          active_player : player.num
          phase : string
          }
+    - market = text json Market obj in game_state.py
     - player_list = text json
     """
-    game_id = models.CharField(max_length=40)
+    match_id = models.CharField(max_length=40)
     register = models.TextField()
     tracker = models.TextField()
+    market = models.TextField()
     player_list = models.TextField()

@@ -18,16 +18,28 @@ class GameState:
      response is gathered or redirected by the massage director
      then world is modified during (only during) advance state
      market is a dict of there lists """
-    def __init__(self,player_list):
-        self.market = Market()
-        self.tracker = 1
+    def __init__(self,player_list,market=None,tracker=None):
         self.players = player_list
         self.activation = 0
+        # add active player
         self.diceroll = []
         # the possible values for phase:
         # pre_roll > post_roll > pre_activation > post_activation > post_card_play > Pre_roll
-        self.phase = 'pre_roll'
         self.msg_list = []
+
+        # load existing market
+        if market:
+            self.market = market
+        else:
+            self.market = Market()
+
+        # load from tracker
+        if tracker:
+            self.hand_count = tracker['hand_count']
+            self.phase = tracker['phase']
+        else:
+            self.hand_count = 1
+            self.phase = 'pre_roll'
 
     def get_legal_moves(self):
         # this function now returns a query object with intended player, and possible action
@@ -259,7 +271,7 @@ class GameState:
     def select_current_player(self):
         # returns the current player object
         count = len(self.players)
-        num = self.tracker % len(self.players)
+        num = self.hand_count % len(self.players)
         if num == 0:
             num = count
         cp = self.select_player_by_num(num)
@@ -364,4 +376,12 @@ class Player:
         self.coin = 3
         self.hand = []
         self.landmark = copy.copy(LandMarks)
+
+    """
+    -defecated method- (gross!)
+    def stringyfy_hand(self):
+        str_hand = [str(x) for x in self.hand]
+        self.hand = str_hand
+        return self
+    """
 
