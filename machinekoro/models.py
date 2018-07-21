@@ -6,6 +6,7 @@ import uuid
 class TokenRegister(models.Model):
     """
     This object stores setting dicts with an uuid for MatchController to call on
+    This is ONLY used to pass data to player to consumers, not a player register
     attributes:
     - token = string
     - match_session = foreign key'ed to GameSession
@@ -20,6 +21,15 @@ class MatchSession(models.Model):
     This object stores game state with a tracker object and a match serial
     attributes:
     - game_id = string uuid # maybe i should change it to something more unique
+    - register = text json {
+        player_by_num:{
+            channel_name:
+            token:
+            player_num:
+            is_prime:
+            is_robot:
+            }
+        }
     - tracker = text json {
          hand_count : int
          active_player : player.num
@@ -28,6 +38,6 @@ class MatchSession(models.Model):
     - player_list = text json
     """
     game_id = models.CharField(max_length=40)
-    registers = models.ForeignKey(TokenRegister,on_delete=models.CASCADE,verbose_name="match_session")
+    register = models.TextField()
     tracker = models.TextField()
     player_list = models.TextField()
