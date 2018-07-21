@@ -53,6 +53,13 @@ class MatchController:
         return match_id_str
 
     def add_player_to_match(self, match_id, prime=False):
+        """
+        this method looks up existing match register and
+        ADDS entry to both matchSession and token register
+        :param match_id: uuid string
+        :param prime: bool
+        :return: token uuid string
+        """
         match_obj = models.MatchSession.objects.get(match_id=match_id)
         match_register = json.loads(match_obj.register)
 
@@ -110,8 +117,6 @@ class MatchController:
     def switch_prime_player():
         # not very sure about this
         pass
-
-
 
 class GameController:
     """
