@@ -1,6 +1,8 @@
+import json
 import math
 import random
 import time
+import uuid
 
 from . import models
 from . import game_state
@@ -10,17 +12,79 @@ class MatchController:
     """
     This object has methods needed to manage data needed for PlayerConsumer
 
-    methods callable by views:
+    O class variables:
+    - token_namespace = uuid namespace used to generate token
+    - match_namespace = uuid namespace used to generate match_id
+
+    O methods callable by views:
+
+    - initialize_new_match
 
     - register_to_token_table
 
-    methods callable by consumers:
+    O methods callable by consumers:
 
-    - initialize_consumer_by_token
+    - look_up_by_token
 
-    - switch_prime
-
+    - switch_prime_player
     """
+    token_namespace = uuid.UUID('e1051943-f6d0-47b0-944d-2f7004d92804')
+    match_namespace = uuid.UUID('ea29425f-ebb4-45aa-ae46-18e28b0dd650')
+
+    def initialize_new_match(self):
+        """
+        this method creates a new match session and assign it with a match_uuid
+        all other fields are left blank until a match starts
+        :return: match_id string
+        """
+        # make a uuid string based on time stamp and rand num
+        timestamp_plus_some = str(int(time.time())) + str(random.random())
+        match_id_str = str(uuid.uuid5(self.match_namespace,timestamp_plus_some))
+
+        # create MatchSession model
+        match_obj = models.MatchSession.objects.create(match_id=match_id_str)
+        match_obj.save()
+        return match_id_str
+
+    def register_to_token_table(self, content, match_id):
+        """
+        this method takes some content(consumer init data obj) and a match_id
+        does proper storage in db, and return a uuid string(i know it's not a real uuid)
+        :param content: consumer setting dict obj
+        :param match_id: string MatchSession uuid
+        :return: token( uuid string)
+        """
+        content_json = json.dumps(content)
+        token_str = str(uuid.uuid5(self.token_namespace,content_json))
+
+        # create register obj
+        register_obj = models.TokenRegister.objects.create(
+            token=token_str,
+            content=content_json
+        )
+        register_obj.save()
+
+        # add register to  match obj, registers field
+        match_obj = models.MatchSession.objects.get(match_id=match_id)
+        match_obj.registers_set.add(register_obj)
+        match_obj.save()
+        return token_str
+
+    @staticmethod
+    def look_up_by_token(token_str):
+        """
+        This method looks up setting dict by token, then return it
+        :param token_str: string uuid
+        :return: dict consumer settings
+        """
+        register_obj = models.TokenRegister.objects.get(token=token_str)
+        content = json.loads(register_obj.content)
+        return content
+
+    @staticmethod
+    def switch_prime_player():
+        # not very sure about this
+        pass
 
 
 class GameController:

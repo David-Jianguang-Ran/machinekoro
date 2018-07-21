@@ -8,16 +8,16 @@ class TokenRegister(models.Model):
     This object stores setting dicts with an uuid for MatchController to call on
     attributes:
     - token = string
-    - game_session = foreign key'ed to GameSession
+    - match_session = foreign key'ed to GameSession
     - content = json string
     """
     token = models.CharField(max_length=40)
     content = models.TextField()
 
 
-class GameSession(models.Model):
+class MatchSession(models.Model):
     """
-    This object stores game state with a tracker object and a gamesession serial
+    This object stores game state with a tracker object and a match serial
     attributes:
     - game_id = string uuid # maybe i should change it to something more unique
     - tracker = text json {
@@ -28,5 +28,6 @@ class GameSession(models.Model):
     - player_list = text json
     """
     game_id = models.CharField(max_length=40)
+    registers = models.ForeignKey(TokenRegister,on_delete=models.CASCADE,verbose_name="match_session")
     tracker = models.TextField()
     player_list = models.TextField()
