@@ -169,14 +169,12 @@ class GameController:
             self.__load_state_from_db(match_id)
             self.match_id = match_id
 
-    def initialize_state(self,player_count):
+    def initialize_state(self):
         """
 
-        :param player_count:
         :return: None
         """
         self.current_state = "some state obj"
-        self.match_id = "some match id"
         pass
 
     def get_query_set(self):
