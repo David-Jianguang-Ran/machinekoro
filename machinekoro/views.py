@@ -1,6 +1,6 @@
 from django.shortcuts import render,redirect
 
-import time
+from . import controllers
 
 # Create your views here.
 
@@ -12,12 +12,20 @@ def cover_view(request):
 
 
 def new_game_poke(request):
-    pass
+    match_controller = controllers.MatchController()
+    match_id = match_controller.initialize_new_match()
+    token = match_controller.add_player_to_match(match_id, prime=True)
+    return redirect(main_view,token=token)
 
 
-def join_game_poke(request):
-    pass
+def join_game_poke(request, match_id):
+    match_controller = controllers.MatchController()
+    token = match_controller.add_player_to_match(match_id, prime=False)
+    return redirect(main_view,token=token)
 
 
-def main_view(request):
-    pass
+def main_view(request, token):
+    context={
+        "token":token
+    }
+    return render(request,'reactEnabled.html',context)

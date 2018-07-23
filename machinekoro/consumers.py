@@ -12,16 +12,22 @@ from . import controllers
 class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
     """
     This Consumer handles ws connection from client. It is instanciated once per connection
-    attributes:
-    - context = {
-    is_prime_player : bool
+    O attributes:
+    - register = {
+    match_id : uuid string
+    player_num = int num 1-5
+    is_prime : bool
+    is_bot : bool
     prime_player_channel: channel_name
     }
+    - register_prime = [ of all register obj from all player ]
 
     methods callable by channels:
 
+    - prime.register.update
 
     methods callable by client:
+
 
 
     methods available only to prime player:
@@ -55,6 +61,10 @@ class GameProcessorConsumer(SyncConsumer):
     - process_response
 
     """
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.game_controller = None
+
     async def initial_turn(self,event):
         pass
 

@@ -4,6 +4,9 @@ import random
 import time
 import uuid
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 from . import models
 from . import game_state
 
@@ -12,7 +15,7 @@ class MatchController:
     """
     This object has methods needed to manage data needed for PlayerConsumer
 
-    O class variables:
+    O instance variables:
     - token_namespace = uuid namespace used to generate token
     - match_namespace = uuid namespace used to generate match_id
 
@@ -33,8 +36,9 @@ class MatchController:
     - __register_to_token_table
 
     """
-    token_namespace = uuid.UUID('e1051943-f6d0-47b0-944d-2f7004d92804')
-    match_namespace = uuid.UUID('ea29425f-ebb4-45aa-ae46-18e28b0dd650')
+    def __init__(self):
+        self.token_namespace = uuid.UUID('e1051943-f6d0-47b0-944d-2f7004d92804')
+        self.match_namespace = uuid.UUID('ea29425f-ebb4-45aa-ae46-18e28b0dd650')
 
     def initialize_new_match(self):
         """
@@ -44,39 +48,56 @@ class MatchController:
         """
         # make a uuid string based on time stamp and rand num
         timestamp_plus_some = str(int(time.time())) + str(random.random())
-        match_id_str = str(uuid.uuid5(self.match_namespace,timestamp_plus_some))
-        register_json = json.dumps({})
+        match_id_str = str(uuid.uuid5(self.match_namespace, timestamp_plus_some))
+        register_json = json.dumps({})  # is dumping nothing necessary?
 
         # create MatchSession model
         match_obj = models.MatchSession.objects.create(match_id=match_id_str,register=register_json)
         match_obj.save()
         return match_id_str
 
-    def add_player_to_match(self, match_id, prime=False):
+    def add_player_to_match(self, match_id, prime=False, bot=False):
         """
+        this sync method could be called by both views and consumers!
         this method looks up existing match register and
+        SENDS a new game register to all in group by match_id via channel_layer
         ADDS entry to both matchSession and token register
         :param match_id: uuid string
         :param prime: bool
-        :return: token uuid string
+        :param bot: bool
+        :return: token uuid string -or- None if bot is added
         """
+        # looks up db object by match_id and load json content
         match_obj = models.MatchSession.objects.get(match_id=match_id)
         match_register = json.loads(match_obj.register)
 
+        # create new register entry
         num = len(match_register) + 1
         register_entry = {
             'match_id': match_id,
             'player_num': num,
             'is_prime': prime,
-            'is_bot': False,
+            'is_bot': bot,
         }
-
         match_register['num'] = register_entry
+
+        # saves match register to db
         match_obj.register = json.dumps(match_register)
         match_obj.save()
 
-        token = self.__register_to_token_table(register_entry, match_id)
-        return token
+        # if this is not the first player(prime player) in a game,
+        # send a message in channel_layer to all in group to update new player info
+        message = {
+            "type": "prime.register.update",
+            "content": match_register  # do i need to serialize this ? I hope not
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(match_id, message)
+
+        # if new player is a human player, add register to TokenRegister model
+        if not bot:
+            token = self.__register_to_token_table(register_entry, match_id)
+            return token
 
     def __register_to_token_table(self, content, match_id):
         """
@@ -84,7 +105,7 @@ class MatchController:
         does proper storage in db, and return a uuid string(i know it's not a real uuid)
         :param content: consumer setting dict obj
         :param match_id: string MatchSession uuid
-        :return: token( uuid string)
+        :return: token( uuid string )
         """
         content_json = json.dumps(content)
         token_str = str(uuid.uuid5(self.token_namespace,content_json))
@@ -103,14 +124,23 @@ class MatchController:
         return token_str
 
     @staticmethod
-    def initialize_by_token(token_str):
+    def initialize_by_token(token_str,channel_name):
         """
-        This method looks up setting dict by token, then return it
+        This method looks up setting dict by token, does modification based on consumer name then return it
         :param token_str: string uuid
+        :param channel_name: channel name of the consumer being initialized
         :return: dict consumer settings
         """
+        # gets register db object and loads content
         register_obj = models.TokenRegister.objects.get(token=token_str)
         content = json.loads(register_obj.content)
+
+        content['self_channel_name'] = channel_name
+
+        # save new content to db
+        content_json = json.dumps(content)
+        register_obj.content = content_json
+        register_obj.save()
         return content
 
     @staticmethod

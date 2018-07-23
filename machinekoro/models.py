@@ -1,7 +1,5 @@
 from django.db import models
 
-import uuid
-
 
 class TokenRegister(models.Model):
     """
@@ -11,6 +9,14 @@ class TokenRegister(models.Model):
     - token = string
     - match_session = foreign key'ed to GameSession
     - content = json string
+        sample:
+        register_entry = {
+            'match_id': match_id uuid string
+            'player_num': num int
+            'is_prime': bool
+            'is_bot': bool
+            'self_channel_name' : consumer channel name (uuid?/string?)
+        }
     """
     token = models.CharField(max_length=40)
     content = models.TextField()
@@ -23,11 +29,11 @@ class MatchSession(models.Model):
     - game_id = string uuid # maybe i should change it to something more unique
     - register = text json {
         player_by_num:{
-            channel_name:
             token:
             player_num:
             is_prime:
             is_robot:
+            channel_name:
             }
         }
     - tracker = text json {
