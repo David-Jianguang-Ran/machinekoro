@@ -26,10 +26,23 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
     - register_update
 
+    - game_state_update
+
+    - send_query_to_client
+
+    - prime_process_response_complete
+
+    - prime_process_query_set
+
+    - prime_send_query_set_request
+
+    - prime_send_response_process_request
 
     methods callable by client:
 
     - prime_player_command
+
+    - process_client_response
 
     methods available only to prime player:
 
@@ -99,37 +112,65 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         channel_laye
         :return:
         """
-        pass
+        message = event['content']
+        message['key'] = "game_state_update"
+        await self.send_json(json.dumps(message))
 
-    async def prime_player_command(self, message):
+    async def send_query_to_client(self, event):
         """
-        This methods handles all client prime player command
-        functions are called based on key of the client message:
-            "start_game" : send process request to GameProcessor
-            "add_bot" : add bot player register using MatchController
-            "kick_player" : not implemented yet
-        :param message: msg with key "prime.player.command"
+        This method send query to client over ws
+        :param event:
         :return:
         """
-        key = message['key']
-        if key == "start_game" and self.register['is_prime']:
-            # send channel_layer initial turn process request msg to GameProcessor
-            pass
-        elif key == "add_bot" and self.register['is_prime']:
-            match_id = self.register['match_id']
-            none_value = sync_to_async(controllers.MatchController.add_player_to_match(match_id,prime=False,bot=True))
-        else:
-            print(str(self.__doc__)+"prime command ignored key="+key)
-        pass
+        query_json = json.dumps(event['query'])
+        await self.send_json(query_json)
 
-    async def process_response_complete(self,event):
+    async def process_client_response(self, event):
+        """
+        This method could be called by both client and client consumer message
+        for prime player, response is recorded and snippet compared to see if there is message outstanding
+        for regular player, response is forwarded to prime with the correct type to call this function there
+        :param event:
+        :return:
+        """
+        if self.register['is_prime']:
+            store = self.query_routing_data
+            # add response to self.response_set
+            response = event['response']
+            store.response_set.append(response)
+
+            # compute response_snippet
+            response_set_snippet = []
+            for each_response in store.response_set:
+                num = each_response['player_num']
+                q_type = each_response['q_type']
+                response_set_snippet.append({num: q_type})
+
+            if response_set_snippet == store.query_set_snippet:
+                store.has_client_query_outstanding = False
+
+        else:
+            # look up prime channel name
+            prime_channel = None
+            for key in self.register_prime:
+                if self.register_prime[key]['is_prime']:
+                    prime_channel = self.register_prime[key]['channel_name']
+
+            message = {
+                "type": "process.client.response",
+                "response": event['response']
+            }
+
+            await self.channel_layer.send(prime_channel, message)
+
+    async def prime_process_response_complete(self,event):
         """
         This method is called by GameProcessor via Channels when processing is complete
         Call next get query set here
         :param event:
         :return:
         """
-        pass
+        await self.prime_send_query_set_request()
 
     async def prime_process_query_set(self,event):
         """
@@ -167,22 +208,36 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             num = query['player_num']
             q_type = query['q_type']
 
-            routing_data.query_set_snippet.append({num:q_type})
+            player_register_data = self.register_prime[num]
+
+            routing_data.query_set_snippet.append({num: q_type})
 
             if not query['only_option']:
-                if self.register_prime[num]['is_prime']:
+                if player_register_data['is_prime']:
                     # send query down ws
-                    await self.send_query_to_client(event)
-                elif self.register_prime[num]['is_bot']:
+                    await self.send_query_to_client(query)
+
+                elif player_register_data['is_bot']:
                     # send query to bot processor
                     # format TBD
                     pass
                 else:
-                    # send msg to consumer
-                    pass
+                    # send query message over channel layer
+                    message = {
+                        "type": 'send.query.to.client',
+                        "query": query
+                    }
+
+                    await self.channel_layer.send(player_register_data['channel_name'],message)
+
             else:
                 # if query has only one option, add response automatically
-                pass
+                query['choice'] = query['options']
+                event = {
+                    "dummy_type":"kaka" ,  # this message isn't sent over channels, its just made to look like it
+                    "response":query
+                }
+                await self.process_client_response(event)
 
         # block until all response are in
         await self.__block_until_false(routing_data.has_client_query_outstanding)
@@ -196,66 +251,32 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         }
         await self.channel_layer.send("GamProcessor", message)
 
-    @staticmethod
-    async def __block_until_false(self,some_boolian,freq=0.5):
+    async def prime_player_command(self, message):
         """
-        This method blocks flow and checks every freq second,
-        if boolian is false, it returns nothing
-        :param some_boolian:
-        :param freq:
+        This methods handles all client prime player command
+        functions are called based on key of the client message:
+            "start_game" : send process request to GameProcessor
+            "add_bot" : add bot player register using MatchController
+            "kick_player" : not implemented yet
+        :param message: msg with key "prime.player.command"
         :return:
         """
-        while some_boolian:
-            await asyncio.sleep(freq)
-        return
-
-    async def send_query_to_client(self,event):
-        """
-
-        :param event:
-        :return:
-        """
+        key = message['key']
+        if key == "start_game" and self.register['is_prime']:
+            # send channel_layer initial turn process request msg to GameProcessor
+            pass
+        elif key == "add_bot" and self.register['is_prime']:
+            match_id = self.register['match_id']
+            none_value = sync_to_async(controllers.MatchController.add_player_to_match(match_id,prime=False,bot=True))
+        else:
+            print(str(self.__doc__)+"prime command ignored key="+key)
         pass
 
-    async def process_client_response(self,event):
+    async def prime_send_query_set_request(self):
         """
-        This method could be called by both client and client consumer message
-        for prime player, response is recorded and snippet compared to see if there is message outstanding
-        for regular player, response is forwarded to prime with the correct type to call this function there
-        :param event:
+        This method sends a mesaage to GameProcessor, instructing it to prepare a query_set and send them over channels
         :return:
         """
-        if self.register['is_prime']:
-            store = self.query_routing_data
-            # add response to self.response_set
-            response = event['response']
-            store.response_set.append(response)
-
-            # compute response_snippet
-            response_set_snippet = []
-            for each_response in store.response_set:
-                num = each_response['player_num']
-                q_type = each_response['q_type']
-                response_set_snippet.append({num: q_type})
-
-            if response_set_snippet == store.query_set_snippet:
-                store.has_client_query_outstanding = False
-
-        else:
-            # look up prime channel name
-            prime_channel = None
-            for key in self.register_prime:
-                if self.register_prime[key]['is_prime']:
-                    prime_channel = self.register_prime[key]['channel_name']
-
-            message = {
-                "type":"process.client.response",
-                "response" : event['response']
-            }
-
-            await self.channel_layer.send(prime_channel,message)
-
-    async def prime_send_query_set_request(self):
         if self.register['is_prime']:
             message = {
                 "type" : "get.query.set",
@@ -267,6 +288,12 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             print("prime Player methods can only be called by prime player")
 
     async def prime_send_response_process_request(self,response_set):
+        """
+        This method sends a response_set to GameProcessor to modify gamestate based on the response
+        All response must be in one set!
+        :param response_set:
+        :return:
+        """
         if self.register['is_prime']:
             message = {
                 "type" : "process.response",
@@ -292,9 +319,23 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         :param kwargs:
         :return:
         """
+        # do i need this here?
         if content['type'] == 'prime.player.command':
             await self.prime_player_command(content)
         pass
+
+    @staticmethod
+    async def __block_until_false(self, some_boolian, freq=0.5):
+        """
+        This method blocks flow and checks every freq second,
+        if boolian is false, it returns nothing
+        :param some_boolian:
+        :param freq:
+        :return:
+        """
+        while some_boolian:
+            await asyncio.sleep(freq)
+        return
 
 
 class GameProcessorConsumer(SyncConsumer):
