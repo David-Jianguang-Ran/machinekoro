@@ -27,6 +27,9 @@ class MatchController:
 
     O methods callable by consumers:
 
+    # fancy feature, ignore for now
+    - update_player_name
+
     - look_up_by_token
 
     - switch_prime_player
@@ -58,6 +61,7 @@ class MatchController:
 
     def add_player_to_match(self, match_id, prime=False, bot=False):
         """
+        -note- first player in any game should always be prime
         this sync method could be called by both views and consumers!
         this method looks up existing match register and
         SENDS a new game register to all in group by match_id via channel_layer
@@ -78,6 +82,7 @@ class MatchController:
             'player_num': num,
             'is_prime': prime,
             'is_bot': bot,
+            # should i add a customizable name & portrait here?
         }
         match_register['num'] = register_entry
 
@@ -87,12 +92,13 @@ class MatchController:
 
         # if this is not the first player(prime player) in a game,
         # send a message in channel_layer to all in group to update new player info
-        message = {
-            "type": "prime.register.update",
-            "content": match_register  # do i need to serialize this ? I hope not
-        }
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(match_id, message)
+        if not prime:
+            message = {
+                "type": "prime.register.update",
+                "content": match_register  # do i need to serialize this ? I hope not
+            }
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(match_id, message)
 
         # if new player is a human player, add register to TokenRegister model
         if not bot:
@@ -180,20 +186,33 @@ class GameController:
     def get_query_set(self):
         """
         you must have a state loaded in self.current_state before calling this method
-        :return: query set to be distributed by player prime's consumer
+        :return: sends query set to be distributed by player prime's consumer
         """
-        query_set = []
+        query_set = self.current_state.get_legal_moves()
         return query_set
 
     def process_query_response(self,response_set):
         """
         this methods takes a response set and apply all decisions from them then advance state
+        then broadcast new state to group
         :param response_set: response objs sent from player prime
         :return:
         """
 
-        self.__save_state_to_db(self.current_state,self.match_id)
+        self.__save_state_to_db()
         pass
+
+    def __send_game_state_update(self):
+        # dump current state into json_set
+        json_set = self.__dump_state_to_json(self.current_state)
+
+        message = {
+            "type": "game.state.update",
+            "match_id":self.match_id ,
+            "content": json_set  # do i need to serialize this ? I hope not
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(self.match_id, message)
 
     def __load_state_from_db(self, match_id):
         """
@@ -207,14 +226,26 @@ class GameController:
         players = json.loads(matchsession.player_list)
         self.current_state = game_state.GameState(players,market,tracker)
 
-    @staticmethod
-    def __save_state_to_db(state, match_id):
+    def __save_state_to_db(self):
         """
         this method takes a state and write data to corresponding MatchSession model
-        :param state:
         :param match_id: session uuid string
         :return: Nothing, it just modifis db
         """
+        # prepare json from world state
+        json_set = self.__dump_state_to_json(self.current_state)
+
+        # save data to db
+        match = models.MatchSession.objects.filter(match_id=self.match_id)
+        match.update(
+            tracker=json_set['tracker'],
+            market=json_set['market'],
+            player_list=json_set['players']
+        )
+        match.save()
+
+    @staticmethod
+    def __dump_state_to_json(state):
         # prepare json from state
         tracker_json = json.dumps({
             "hand_count": state.hand_count,
@@ -224,14 +255,12 @@ class GameController:
         market_json = json.dumps(state.market)
         player_list_json = json.dumps(state.players)
 
-        # save data to db
-        match = models.MatchSession.objects.filter(match_id=match_id)
-        match.update(
-            tracker=tracker_json,
-            market=market_json,
-            player_list=player_list_json
-        )
-        match.save()
+        json_set = {
+            'tracker' : tracker_json,
+            'market' : market_json,
+            'players' : player_list_json
+        }
+        return json_set
 
 
 class SearchController:

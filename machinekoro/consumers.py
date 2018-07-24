@@ -18,17 +18,14 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
     player_num = int num 1-5
     is_prime : bool
     is_bot : bool
-    prime_player_channel: channel_name
+    prime_player_channel: channel_name # um.... not happening
     }
     - register_prime = [ of all register obj from all player ]
 
-    methods callable by channels:
+    methods callable by channels :
 
-    - send_json
+    - register_update
 
-    - prime_register_update
-
-    - new_query_set
 
     methods callable by client:
 
@@ -49,14 +46,16 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         token = self.scope['url_route']['kwargs']['token']
         register_content = sync_to_async(controllers.MatchController.initialize_by_token(token,self.channel_name))
 
+        # copy register to memory
         self.register = register_content
+
         match_id = self.register['match_id']
 
         await self.accept()
         await self.channel_layer.group_add(match_id)
         pass
 
-    async def prime_register_update(self,event):
+    async def register_update(self,event):
         """
         this method receives updates of prime_register obj send from MatchController.add_player_to_match
         if the player is prime, then the prime_register gets saved
@@ -70,12 +69,31 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         if self.register['is_prime']:
             self.register_prime = content
 
-        # forward update to client withe the appropriate key
+        # forward update to client with the appropriate key
+        # note that all clients would keep the prime_register for match player data to name or whatever (.......)
         client_massage = {
             "key": "register_update",
             "content": content
         }
         await self.send_json(client_massage)
+
+    async def game_state_update(self,event):
+        """
+        This method is called by a broadcast message into group from GameProcessor
+        :param event: looks something like this:
+            message = {
+            "type": "game.state.update",
+            "match_id":self.match_id ,
+            "content": json_set = {
+                tracker:
+                market :
+                players :
+            }
+        }
+        channel_laye
+        :return:
+        """
+        pass
 
     async def prime_player_command(self, message):
         """
@@ -83,6 +101,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         functions are called based on key of the client message:
             "start_game" : send process request to GameProcessor
             "add_bot" : add bot player register using MatchController
+            "kick_player" : not implemented yet
         :param message: msg with key "prime.player.command"
         :return:
         """
@@ -97,7 +116,59 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             print(str(self.__doc__)+"prime command ignored key="+key)
         pass
 
+    async def process_response_complete(self,event):
+        """
+        This method is called by GameProcessor via Channels when processing is complete
+        Call next get query set here
+        :param event:
+        :return:
+        """
+        pass
+
+    async def prime_process_query_set(self,event):
+        """
+        This method is called by a GameProcessor message with the key process.query.set (sent by get_query_set)
+        This method:
+            - takes the query set
+            - computes query_set_snippet
+            - looks up prime_register and sends query to players
+            - block until complete
+            - send response set to GameProcessor
+        :param event: looks something like this:
+            message = {
+            "type":"process_query_set",
+            "match_id": match_id,
+            "query_set":query_set
+        }
+        :return:
+        """
+        pass
+
+    async def prime_send_query_set_request(self):
+        if self.register['is_prime']:
+            message = {
+                "type" : "get.query.set",
+                "prime_channel_name" : self.channel_name,
+                "match_id" : self.register['match_id']
+            }
+            await self.channel_layer.send("GamProcessor",message)
+        else:
+            print("prime Player methods can only be called by prime player")
+
+    async def prime_send_response_process_request(self,response_set):
+        if self.register['is_prime']:
+            message = {
+                "type" : "process.response",
+                "prime_channel_name" : self.channel_name,
+                "match_id" : self.register['match_id'],
+                "response_set" : response_set
+            }
+            await self.channel_layer.send("GamProcessor",message)
+        else:
+            print("prime Player methods can only be called by prime player")
+
     async def disconnect(self, code):
+        # remember to implement the switch prime thing
         if self.register['is_prime']:
             pass
         else:
@@ -119,7 +190,7 @@ class GameProcessorConsumer(SyncConsumer):
     """
     This consumer handles game process requests from player prime.
     This object is stateless, all game state data comes from db lookup
-
+     > This is obj is all synchronous, you dummy! <
     methods callable by channels:
 
     - initial_turn
@@ -130,7 +201,7 @@ class GameProcessorConsumer(SyncConsumer):
 
     """
 
-    async def initial_turn(self,event):
+    def initial_turn(self,event):
         """
         This method is called by channel layer with key 'initial.turn'
         This method takes the match_id, creates state, saves to db then sends the queries
@@ -146,8 +217,8 @@ class GameProcessorConsumer(SyncConsumer):
         prime_channel_name = event['prime_channel_name']
         game_controller = controllers.GameController(match_id=match_id)
 
-        sync_to_async(game_controller.initialize_state())
-        query_set = sync_to_async(game_controller.get_query_set())
+        game_controller.initialize_state()
+        query_set = game_controller.get_query_set()
 
         message = {
             "type": "process_query_set",
@@ -155,9 +226,9 @@ class GameProcessorConsumer(SyncConsumer):
             "query_set": query_set
         }
 
-        await self.channel_layer.send(prime_channel_name, message)
+        async_to_sync(self.channel_layer.send(prime_channel_name, message))
 
-    async def get_query_set(self,event):
+    def get_query_set(self,event):
         """
         This method is called by channel layer with key 'get.query.set'
         This method takes the match_id, loads state, makes query_set then sends the queries
@@ -173,7 +244,7 @@ class GameProcessorConsumer(SyncConsumer):
         prime_channel_name = event['prime_channel_name']
         game_controller = controllers.GameController(match_id=match_id)
 
-        query_set = sync_to_async(game_controller.get_query_set())
+        query_set = game_controller.get_query_set()
 
         message = {
             "type":"process_query_set",
@@ -181,9 +252,9 @@ class GameProcessorConsumer(SyncConsumer):
             "query_set":query_set
         }
 
-        await self.channel_layer.send(prime_channel_name, message)
+        async_to_sync(self.channel_layer.send(prime_channel_name, message))
 
-    async def process_response(self,event):
+    def process_response(self,event):
         """
         This method is called by channel layer with key 'process.response'
         This methods applies all game state modifications in response_set, saves to db
@@ -201,14 +272,14 @@ class GameProcessorConsumer(SyncConsumer):
         response_set = event['response_set']
         game_controller = controllers.GameController(match_id=match_id)
 
-        sync_to_async(game_controller.process_query_response(response_set))
+        game_controller.process_query_response(response_set)
 
         message = {
-            "type":"process_response_complete",
+            "type":"process.response.complete",
             "match_id": match_id
         }
 
-        await self.channel_layer.send(prime_channel_name, message)
+        async_to_sync(self.channel_layer.send(prime_channel_name, message))
 
 
 class BotProcessorConsumer(SyncConsumer):
