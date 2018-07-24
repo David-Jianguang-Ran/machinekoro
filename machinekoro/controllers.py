@@ -229,7 +229,6 @@ class GameController:
     def __save_state_to_db(self):
         """
         this method takes a state and write data to corresponding MatchSession model
-        :param match_id: session uuid string
         :return: Nothing, it just modifis db
         """
         # prepare json from world state

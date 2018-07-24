@@ -18,9 +18,9 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
     player_num = int num 1-5
     is_prime : bool
     is_bot : bool
-    prime_player_channel: channel_name # um.... not happening
+    channel_name: channel_name # um.... not happening
     }
-    - register_prime = [ of all register obj from all player ]
+    - register_prime = { of all register obj from all player }
 
     methods callable by channels :
 
@@ -35,6 +35,12 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
 
     """
+    def __init__(self,*args,**kwargs):
+        super().__init__(self,*args,**kwargs)
+        self.register = None
+        self.register_prime = None
+        self.query_routing_data = None
+
     async def connect(self):
         """
         This method is called on connection with ws
@@ -140,9 +146,114 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             "match_id": match_id,
             "query_set":query_set
         }
+            query = {
+        'key': "action.query",
+        "player_num": 'player.num',
+        "q_type": "invest_query",
+        "options": [True, False],
+        "only_option":'bool'
+        }
+        :return:
+        """
+        query_set = event['query_set']
+        routing_data = self.query_routing_data
+        routing_data.query_set_snippet = []
+        routing_data.has_client_query_outstanding = True
+        routing_data.response_set = []
+
+        # process each query in query set
+        for query in query_set:
+
+            num = query['player_num']
+            q_type = query['q_type']
+
+            routing_data.query_set_snippet.append({num:q_type})
+
+            if not query['only_option']:
+                if self.register_prime[num]['is_prime']:
+                    # send query down ws
+                    await self.send_query_to_client(event)
+                elif self.register_prime[num]['is_bot']:
+                    # send query to bot processor
+                    # format TBD
+                    pass
+                else:
+                    # send msg to consumer
+                    pass
+            else:
+                # if query has only one option, add response automatically
+                pass
+
+        # block until all response are in
+        await self.__block_until_false(routing_data.has_client_query_outstanding)
+
+        # make response message to game processor
+        message = {
+            "type": "process.response",
+            "prime_channel_name": self.channel_name,
+            "match_id": self.register['match_id'],
+            "response_set":routing_data.response_set
+        }
+        await self.channel_layer.send("GamProcessor", message)
+
+    @staticmethod
+    async def __block_until_false(self,some_boolian,freq=0.5):
+        """
+        This method blocks flow and checks every freq second,
+        if boolian is false, it returns nothing
+        :param some_boolian:
+        :param freq:
+        :return:
+        """
+        while some_boolian:
+            await asyncio.sleep(freq)
+        return
+
+    async def send_query_to_client(self,event):
+        """
+
+        :param event:
         :return:
         """
         pass
+
+    async def process_client_response(self,event):
+        """
+        This method could be called by both client and client consumer message
+        for prime player, response is recorded and snippet compared to see if there is message outstanding
+        for regular player, response is forwarded to prime with the correct type to call this function there
+        :param event:
+        :return:
+        """
+        if self.register['is_prime']:
+            store = self.query_routing_data
+            # add response to self.response_set
+            response = event['response']
+            store.response_set.append(response)
+
+            # compute response_snippet
+            response_set_snippet = []
+            for each_response in store.response_set:
+                num = each_response['player_num']
+                q_type = each_response['q_type']
+                response_set_snippet.append({num: q_type})
+
+            if response_set_snippet == store.query_set_snippet:
+                store.has_client_query_outstanding = False
+
+        else:
+            # look up prime channel name
+            prime_channel = None
+            for key in self.register_prime:
+                if self.register_prime[key]['is_prime']:
+                    prime_channel = self.register_prime[key]['channel_name']
+
+            message = {
+                "type":"process.client.response",
+                "response" : event['response']
+            }
+
+            await self.channel_layer.send(prime_channel,message)
 
     async def prime_send_query_set_request(self):
         if self.register['is_prime']:
