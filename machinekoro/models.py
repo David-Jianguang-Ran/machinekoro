@@ -46,6 +46,7 @@ class MatchSession(models.Model):
     - player_list = text json
     """
     match_id = models.CharField(max_length=40)
+    in_progress = models.BooleanField()
     register = models.TextField()
     tracker = models.TextField()
     market = models.TextField()

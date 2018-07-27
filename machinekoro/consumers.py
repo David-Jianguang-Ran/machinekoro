@@ -306,11 +306,9 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             print("prime Player methods can only be called by prime player")
 
     async def disconnect(self, code):
-        # remember to implement the switch prime thing
-        if self.register['is_prime']:
-            pass
-        else:
-            pass
+        # Match controller will turn this player into a bot player, if this player is prime, another will be selected
+        # then a update message will be sent to the remaining players
+        controllers.MatchController.handle_player_disconnect(self.register)
 
     async def receive_json(self, content, **kwargs):
         """
