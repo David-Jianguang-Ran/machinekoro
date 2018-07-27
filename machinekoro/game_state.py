@@ -1,7 +1,7 @@
 import copy
 import random
 
-from .cards import LandMarks,CardDex,Card
+from .cards import LandMarks, CardDex, Card
 
 
 # In-memory Data Obj below
@@ -18,7 +18,7 @@ class GameState:
      response is gathered or redirected by the massage director
      then world is modified during (only during) advance state
      market is a dict of there lists """
-    def __init__(self,player_list,market=None,tracker=None):
+    def __init__(self, player_list, market=None, tracker=None):
         self.players = player_list
         self.activation = 0
         # add active player
@@ -48,8 +48,7 @@ class GameState:
         if phase == 'pre_roll':
             # returns a query object with allowed dice options
             query = {
-                "channel_name": current_player.channel_name,
-                'type':"action.query" ,
+                "key" : "action.query",
                 "player_num" : current_player.num,
                 "q_type":"dice_query_a"
             }
@@ -60,39 +59,37 @@ class GameState:
                     query['options'] = [1,2]
             else:
                 query['options'] = [1]
-                query['channel_name'] = None # am I allowed to do this? if so None means pipe to advance_state
+                query['only_option'] = True
             return [query]
 
         elif phase == 'post_roll':
             # returns the  list of queries to active player to choose which diceroll to apply
             query = {
-                "channel_name": current_player.channel_name,
-                'type': "action.query",
+                "key": "action.query",
                 "player_num": current_player.num,
                 "q_type": "dice_query_b",
                 "options": self.diceroll
             }
             if len(self.diceroll) != 3:
-                query['channel_name'] = None
+                query['only_option'] = True
             return [query]
 
         elif phase == "pre_activation":
             # returns a query asking whether to apply harbour (activation + 2)
             if current_player.landmark['Harbor'] == 1 and self.activation >= 10:
                 query = {
-                    "channel_name": current_player.channel_name,
-                   'type':"action.query" ,
+                    "key": "action.query",
                     "player_num": current_player.num,
                     "q_type": "dice_query_c",
                     "options": [True,False]
                 }
             else:
                 query = {
-                    "channel_name": None,
-                    'type':"action.query" ,
+                    "key": "action.query",
                     "player_num": current_player.num,
                     "q_type": "dice_query_c",
-                    "options": [True, False]
+                    "options": [True, False],
+                    "only_option" : True
                 }
             return [query]
 
@@ -101,14 +98,6 @@ class GameState:
             # ??? what the hell is this? what does this do?
             # answer: no query is prepared here because query from card activation must be generated
             # when the card action is applied, therefore here we only copy queries from an attribute and return them
-            """ If not query list return none
-            if not query_list:
-                query_list = [{
-                    "channel_name": None,
-                    "player_num": current_player.num,
-                    "q_type": "activation_query",
-                    "options": ['Pass']
-                }]"""
             return query_list
 
         elif phase == "post_activation":
@@ -125,9 +114,8 @@ class GameState:
                 if coin >= some_card.cost and some_card not in current_player.hand:
                     options.append(some_card.name)
             query_list = [{
-                "channel_name": current_player.channel_name,
-                'type': "action.query",
-                "player_num": current_player.num,
+                "key" : "action.query" ,
+                "player_num" : current_player.num,
                 "q_type": "card_play_query",
                 "options": options
             }]
@@ -138,9 +126,8 @@ class GameState:
             tSU = Card(CardDex['Tech Start-up'])
             if tSU in current_player.hand and current_player.coin > 0 :
                 query_list = [{
-                    "channel_name": current_player.channel_name,
-                    'type':"action.query",
-                    "player_num": current_player.num,
+                    "key" : "action.query" ,
+                    "player_num" : current_player.num,
                     "q_type": "invest_query",
                     "options": [True,False]
                 }]
@@ -250,9 +237,13 @@ class GameState:
             for response in query_response_all:
                 if response['player_num'] == current_player.num and response['q_type'] == 'card_play_query':
                     card_decision = response['choices']
-                    card = self.market.pop_card(card_decision)
-                    current_player.coin -= card.cost
-                    current_player.hand.append(card)
+                    choice_card = Card(CardDex[card_decision])
+                    if current_player.coin >= choice_card.cost:
+                        card = self.market.pop_card(card_decision)
+                        current_player.coin -= card.cost
+                        current_player.hand.append(card)
+                    else:
+                        print("WARNING: Card Cost error detected")
             self.phase = 'post_card_play'
 
         elif phase == "post_card_play":
@@ -262,11 +253,12 @@ class GameState:
                         choice = response['choices']
                         # choice to invest 1 coin or not
                         if choice:
-                            current_player.snippet += 1
+                            current_player.investment += 1
                             current_player.coin -= 1
                         elif not choice:
                             pass
             self.phase = 'pre_roll'
+            self.hand_count += 1
 
     def select_current_player(self):
         # returns the current player object
@@ -289,13 +281,13 @@ class GameState:
         for player in state.players:
             landmarks = player.landmark
             if landmarks == {
-                    "City Hall":True,
-                    "Harbour":True,
-                    "Train Station":True,
-                    "Shopping Mall":True,
-                    "Amusement Park":True,
-                    "Moon Tower":True,
-                    "Airport":True} :
+                    "City Hall": True,
+                    "Harbour": True,
+                    "Train Station": True,
+                    "Shopping Mall": True,
+                    "Amusement Park": True,
+                    "Moon Tower": True,
+                    "Airport": True}:
                 winner = player.num
         return winner
 
@@ -310,7 +302,7 @@ class Market:
         self.purple = []
 
     def pop_card(self,card_name):
-        # add method to check if player can afford and charge accordingly
+        # card_name passed in here has been validated in advance_state
         if card_name in self.low:
             name = self.low.pop(card_name)
             self.replenish_low()
@@ -376,6 +368,7 @@ class Player:
         self.coin = 3
         self.hand = []
         self.landmark = copy.copy(LandMarks)
+        self.investment = []
 
     """
     -defecated method- (gross!)

@@ -6,13 +6,15 @@ import random
 # landmark card index is below
 # landmark logic entangled in the game logic sorry~
 
+# I need to verify that all landmark logic has been implemented! Check off below
+
 LandMarks = {
     "City Hall":True,
-    "Harbour":False,
-    "Train Station":False,
+    "Harbour":False,  # Check
+    "Train Station":False,  # Check
     "Shopping Mall":False,
     "Amusement Park":False,
-    "Moon Tower":False,
+    "Moon Tower":False,  # Check
     "Airport":False
 }
 
@@ -310,14 +312,13 @@ class Card:
                     keys.append(entry.key())
             if total > 1:
                 query = {
-                    "channel_name": active_player.channel_name,
-                    "player_num": active_player.num,
+                    "key": "action.query",
+                    "player_num": current_player.num,
                     "q_type": "card_query_demo",
                     'options': keys,
-                    'type':"action.query"
                 }
                 if len(query['options']) == 1:
-                    query['channel_name'] = None
+                    query['only_option'] = True
                 return query
 
         elif self.name == 'Flower Shop':
@@ -355,14 +356,13 @@ class Card:
                 if card.colour != 'Purple':
                     names.append(card.name)
             query = {
-                "channel_name": active_player.channel_name,
-                "player_num": active_player.num,
+                "key": "action.query",
+                "player_num": current_player.num,
                 "q_type": "card_query_move",
                 'options': [names,target],
-                'type':"action.query"
             }
             if len(names) == 1 and len(target) == 1:
-                query['channel_name'] = None
+                query['only_option'] = True
             return query
 
         elif self.name == 'Soda Bottling Plant':
@@ -476,22 +476,21 @@ class Card:
                     }
                     choice_t.append(entry)
             query = {
-                "channel_name": active_player.channel_name,
-                "player_num": active_player.num,
+                "key": "action.query",
+                "player_num": current_player.num,
                 "q_type": "card_query_trade",
                 'options': [choice_s,choice_t],
-                'type':"action.query"
             }
             return query
 
         elif self.name == "Tech Start-up":
-            p_count = self.snippet
+            p_count = active_player.snippet
             for some_player in state.players:
                 if some_player.coin >= p_count:
                     some_player.coin -= p_count
                     active_player.coin += p_count
                 elif some_player.coin >= 0:
-                    count = some_player.coin + 0
+                    count = some_player.coin + 0  # why +0?
                     some_player.coin = 0
                     active_player.coin += count
 
