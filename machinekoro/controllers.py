@@ -116,15 +116,18 @@ class MatchController:
         content_json = json.dumps(content)
         token_str = str(uuid.uuid5(self.token_namespace,content_json))
 
+        # look up match obj
+        match_obj = models.MatchSession.objects.get(match_id=match_id)
+
         # create register obj
         register_obj = models.TokenRegister.objects.create(
             token=token_str,
-            content=content_json
+            content=content_json,
+            match_session=match_obj
         )
         register_obj.save()
 
         # add register to  match obj, registers field
-        match_obj = models.MatchSession.objects.get(match_id=match_id)
         match_obj.registers_set.add(register_obj)
         match_obj.save()
         return token_str
@@ -180,8 +183,16 @@ class GameController:
 
         :return: None
         """
-        self.current_state = "some state obj"
-        pass
+        # look up match
+        match = models.MatchSession.objects.filter(match_id=self.match_id)
+        player_count = len(match.register)
+
+        # initialize player list then game state
+        player_list = [game_state.Player(i) for i in range(1,player_count)]
+        self.current_state = game_state.GameState(player_list)
+
+        # saves to db
+        self.__save_state_to_db()
 
     def get_query_set(self):
         """
@@ -198,7 +209,7 @@ class GameController:
         :param response_set: response objs sent from player prime
         :return:
         """
-
+        self.current_state.advance_state(response_set)
         self.__save_state_to_db()
         pass
 
@@ -218,7 +229,7 @@ class GameController:
         """
         this method loads db obj by game id,
         :param match_id:
-        :return: nothing, modifys self.current_state
+        :return: nothing, modify self.current_state
         """
         matchsession = models.MatchSession.objects.get(match_id=match_id)
         tracker = json.loads(matchsession.tracker)
@@ -229,7 +240,7 @@ class GameController:
     def __save_state_to_db(self):
         """
         this method takes a state and write data to corresponding MatchSession model
-        :return: Nothing, it just modifis db
+        :return: Nothing, it just modify db
         """
         # prepare json from world state
         json_set = self.__dump_state_to_json(self.current_state)

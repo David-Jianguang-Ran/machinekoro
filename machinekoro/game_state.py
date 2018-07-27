@@ -287,7 +287,7 @@ class GameState:
                         if response['choices']:
                             current_player.investment += 1
                             current_player.coin -= 1
-                        elif not choice:
+                        elif not response['choices']:
                             pass
                     elif response['player_num'] == current_player.num and response['q_type'] == 'duces_query':
                         # choice to take a another turn or not

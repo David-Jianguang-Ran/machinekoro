@@ -19,6 +19,7 @@ class TokenRegister(models.Model):
         }
     """
     token = models.CharField(max_length=40)
+    match_session = models.ForeignKey(MatchSession, on_delete=models.CASCADE)
     content = models.TextField()
 
 

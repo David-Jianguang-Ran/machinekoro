@@ -22,7 +22,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
     }
     - register_prime = { of all register obj from all player }
 
-    methods callable by channels :
+    O methods callable by channels :
 
     - register_update
 
@@ -38,7 +38,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
     - prime_send_response_process_request
 
-    methods callable by client:
+    O methods callable by client:
 
     - prime_player_command
 
