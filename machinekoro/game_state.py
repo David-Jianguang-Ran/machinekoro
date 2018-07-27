@@ -21,6 +21,7 @@ class GameState:
     def __init__(self, player_list, market=None, tracker=None):
         self.players = player_list
         self.activation = 0
+        self.duces = False
         # add active player
         self.diceroll = []
         # the possible values for phase:
@@ -113,6 +114,11 @@ class GameState:
             for some_card in self.market.purple:
                 if coin >= some_card.cost and some_card not in current_player.hand:
                     options.append(some_card.name)
+
+            # if player has airpot, add another option
+            if current_player.landmark['Airport']:
+                options.append('Activate Airport')
+
             query_list = [{
                 "key" : "action.query" ,
                 "player_num" : current_player.num,
@@ -124,14 +130,27 @@ class GameState:
         elif phase == "post_card_play":
             # returns query object with tech start-up or whatever
             tSU = Card(CardDex['Tech Start-up'])
+            query_list = []
             if tSU in current_player.hand and current_player.coin > 0 :
-                query_list = [{
+                query = {
                     "key" : "action.query" ,
                     "player_num" : current_player.num,
                     "q_type": "invest_query",
                     "options": [True,False]
-                }]
+                }
+                query_list.append(query)
+
+            if self.duces:
+                query = {
+                    "key" : "action.query" ,
+                    "player_num" : current_player.num,
+                    "q_type": "duces_query",
+                    "options": [True,False]
+                }
+                query_list.append(query)
+
             return query_list
+
         else:
             pass
 
@@ -161,6 +180,10 @@ class GameState:
             for response in query_response_all:
                 if response['player_num'] == current_player.num and response['q_type'] == 'dice_query_b':
                     choices = response['choices']
+
+                    # check for doubles
+                    if choices[0] == choices[1]:
+                        self.duces = True
                     activation = sum(choices)
                     self.activation = activation
                     self.diceroll = choices
@@ -229,34 +252,48 @@ class GameState:
                             target_player.hand.remove(card)
             elif not query_response_all:
                 print("No response received advance state without action")
+
+            # landmark['City Hall'] logic:
+            if current_player.coin == 0:
+                current_player.coin = 1
+
             self.phase = 'post_activation'
 
         elif phase == "post_activation":
             # takes state and play card action and modifies and returns the state
+            # card play happens here
             # remember to charge for cards!!!
             for response in query_response_all:
                 if response['player_num'] == current_player.num and response['q_type'] == 'card_play_query':
                     card_decision = response['choices']
-                    choice_card = Card(CardDex[card_decision])
-                    if current_player.coin >= choice_card.cost:
-                        card = self.market.pop_card(card_decision)
-                        current_player.coin -= card.cost
-                        current_player.hand.append(card)
+                    # landmark['Airport'] logic here
+                    if card_decision == "Activate Airport":
+                        current_player.coin += 10
                     else:
-                        print("WARNING: Card Cost error detected")
+                        choice_card = Card(CardDex[card_decision])
+                        if current_player.coin >= choice_card.cost:
+                            card = self.market.pop_card(card_decision)
+                            current_player.coin -= card.cost
+                            current_player.hand.append(card)
+                        else:
+                            print("WARNING: Card Cost error detected")
             self.phase = 'post_card_play'
 
         elif phase == "post_card_play":
             if query_response_all:
                 for response in query_response_all:
                     if response['player_num'] == current_player.num and response['q_type'] == 'invest_query':
-                        choice = response['choices']
                         # choice to invest 1 coin or not
-                        if choice:
+                        if response['choices']:
                             current_player.investment += 1
                             current_player.coin -= 1
                         elif not choice:
                             pass
+                    elif response['player_num'] == current_player.num and response['q_type'] == 'duces_query':
+                        # choice to take a another turn or not
+                        if response['choices']:
+                            self.hand_count -= 1
+            self.duces = False
             self.phase = 'pre_roll'
             self.hand_count += 1
 

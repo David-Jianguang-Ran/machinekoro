@@ -9,13 +9,13 @@ import random
 # I need to verify that all landmark logic has been implemented! Check off below
 
 LandMarks = {
-    "City Hall":True,
+    "City Hall":True, # Check
     "Harbour":False,  # Check
     "Train Station":False,  # Check
-    "Shopping Mall":False,
-    "Amusement Park":False,
+    "Shopping Mall":False,  # Check
+    "Amusement Park":False, # Check
     "Moon Tower":False,  # Check
-    "Airport":False
+    "Airport":False # Check
 }
 
 CardDex = {
@@ -277,11 +277,33 @@ class Card:
     def __str__(self):
         return str(self.name)
 
+    @ staticmethod
+    def __take_away_coin(taker,giver,amount):
+        """
+        This method transfer coins equal to amount from giver to taker.
+        if giver has less then amount, giver gives what ever he has
+        :param taker: player obj
+        :param giver: player obj
+        :param amount: int
+        :return: None
+        """
+        if giver.coin >= amount:
+            giver.coin -= amount
+            taker.coin += amount
+        elif giver.coin >= 0:
+            taker.coin += giver.coin
+            giver.coin = 0
+
     def activate(self, state, current_player, active_player):
         # this method as all the actions of all regular cards
         # when it is called it will look up the name of the card calling and modify the world appropriately
-        if self.name in ['Wheat Field','Ranch','Flower Orchard','Forrest','Bakery']:
+        if self.name in ['Wheat Field','Ranch','Flower Orchard','Forrest']:
             active_player.coin += 1
+
+        elif self.name == 'Bakery':
+            active_player.coin += 1
+            if active_player.landmark['Shopping Mall']:
+                active_player.coin += 1
 
         elif self.name == 'Apple Orchard':
             active_player.coin += 3
@@ -297,10 +319,13 @@ class Card:
         elif self.name == 'General Store':
             landmarks = active_player.landmark
             total = 0
+            amount = 2
+            if active_player.landmark['Shopping Mall']:
+                amount = 3
             for entry in landmarks:
                 total += entry.value()
             if total < 2:
-                active_player.coin += 2
+                active_player.coin += amount
 
         elif self.name == 'Demolition Company':
             landmarks = active_player.landmark
@@ -381,41 +406,35 @@ class Card:
             active_player.coin += count * 2
 
         elif self.name == 'Sushi Bar' and active_player.landmark['Harbor'] == 1:
-            if current_player.coin >= 3:
-                current_player.coin -= 3
-                active_player.coin += 3
-            elif current_player.coin >= 0:
-                count = current_player.coin + 0
-                current_player.coin = 0
-                active_player.coin += count
+            amount = 3
+            if active_player.landmark['Shopping Mall']:
+                amount += 1
+            self.__take_away_coin(active_player,current_player,amount)
 
-        elif self.name in ['Cafe','Pizza Joint'] :
-            if current_player.coin >= 1:
-                current_player.coin -= 1
-                active_player.coin += 1
+        elif self.name in ['Cafe','Pizza Joint']:
+            amount = 1
+            if active_player.landmark['Shopping Mall']:
+                amount += 1
+            self.__take_away_coin(active_player,current_player,amount)
 
         elif self.name == 'French Restaurant' :
+            amount = 5
+            if active_player.landmark['Shopping Mall']:
+                amount += 1
+
             landmarks = current_player.landmark
             total = 0
             for entry in landmarks:
                 total += entry.value()
             if total >= 2:
-                if current_player.coin >= 5:
-                    current_player.coin -= 5
-                    active_player.coin += 5
-                elif current_player.coin >= 0:
-                    count = current_player.coin + 0
-                    current_player.coin = 0
-                    active_player.coin += count
+                self.__take_away_coin(active_player,current_player,amount)
 
-        elif self.name == 'Family Restaurant' :
-            if current_player.coin >= 2:
-                current_player.coin -= 2
-                active_player.coin += 2
-            elif current_player.coin >= 0:
-                count = current_player.coin + 0
-                current_player.coin = 0
-                active_player.coin += count
+        elif self.name == 'Family Restaurant':
+            amount = 2
+            if active_player.landmark['Shopping Mall']:
+                amount += 1
+
+            self.__take_away_coin(active_player,current_player,amount)
 
         elif self.name == 'Members Only Club' :
             landmarks = current_player.landmark
@@ -423,9 +442,8 @@ class Card:
             for entry in landmarks:
                 total += entry.value()
             if total >= 3:
-                count = current_player.coin + 0
+                active_player.coin += current_player.coin
                 current_player.coin = 0
-                active_player.coin += count
 
         elif self.name == 'Publisher':
             for some_player in state.players:
@@ -433,23 +451,11 @@ class Card:
                 for card in active_player.hand:
                     if card.color == "Red" or card.name in ['Bakery','Flower Shop','General Store']:
                         p_count += 1
-                if some_player.coin >= p_count:
-                    some_player.coin -= p_count
-                    active_player.coin += p_count
-                elif some_player.coin >= 0:
-                    count = some_player.coin + 0
-                    some_player.coin = 0
-                    active_player.coin += count
+                self.__take_away_coin(active_player,some_player,p_count)
 
         elif self.name == 'Stadium':
             for some_player in state.players:
-                if some_player.coin >= 2:
-                    some_player.coin -= 2
-                    active_player.coin += 2
-                elif some_player.coin >= 0:
-                    count = some_player.coin + 0
-                    some_player.coin = 0
-                    active_player.coin += count
+                self.__take_away_coin(active_player,some_player,2)
 
         elif self.name == 'Tax Office':
             for some_player in state.players:
@@ -484,15 +490,9 @@ class Card:
             return query
 
         elif self.name == "Tech Start-up":
-            p_count = active_player.snippet
+            amount = active_player.snippet
             for some_player in state.players:
-                if some_player.coin >= p_count:
-                    some_player.coin -= p_count
-                    active_player.coin += p_count
-                elif some_player.coin >= 0:
-                    count = some_player.coin + 0  # why +0?
-                    some_player.coin = 0
-                    active_player.coin += count
+                self.__take_away_coin(active_player,some_player,amount)
 
         else:
             print(+str(self) + 'Not activated due to unsatisfied condition')
