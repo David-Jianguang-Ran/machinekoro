@@ -5,7 +5,6 @@ import asyncio
 import copy
 import json
 
-from . import views
 from . import controllers
 
 
@@ -116,13 +115,18 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         message['key'] = "game_state_update"
         await self.send_json(json.dumps(message))
 
-    async def send_query_to_client(self, event):
+    async def send_query_set_to_client(self, event):
         """
         This method send query to client over ws
         :param event:
         :return:
         """
-        query_json = json.dumps(event['query'])
+        # make sure client is getting a list of queries, even if there is only one
+        query_set = event['query_set']
+        if not type(query_set) == 'list':
+            query_set = [query_set]
+
+        query_json = json.dumps(query_set)
         await self.send_json(query_json)
 
     async def process_client_response(self, event):
@@ -198,46 +202,42 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         """
         query_set = event['query_set']
         routing_data = self.query_routing_data
+        routing_data.outgoing_query_sets = {}
         routing_data.query_set_snippet = []
         routing_data.has_client_query_outstanding = True
         routing_data.response_set = []
 
-        # process each query in query set
+        # process each query in to query set to client
         for query in query_set:
 
             num = query['player_num']
             q_type = query['q_type']
 
-            player_register_data = self.register_prime[num]
-
             routing_data.query_set_snippet.append({num: q_type})
 
             if not query['only_option']:
-                if player_register_data['is_prime']:
-                    # send query down ws
-                    await self.send_query_to_client(query)
-
-                elif player_register_data['is_bot']:
-                    # send query to bot processor
-                    # format TBD
-                    pass
-                else:
-                    # send query message over channel layer
-                    message = {
-                        "type": 'send.query.to.client',
-                        "query": query
-                    }
-
-                    await self.channel_layer.send(player_register_data['channel_name'],message)
-
+                    # append query to outgoing set with the co-responding player num
+                    routing_data.outgoing_query_sets[num].append(query)
             else:
                 # if query has only one option, add response automatically
                 query['choice'] = query['options']
                 event = {
-                    "dummy_type":"kaka" ,  # this message isn't sent over channels, its just made to look like it
+                    "dummy_type":"kaka",  # this message isn't sent over channels, its just made to look like it
                     "response":query
                 }
                 await self.process_client_response(event)
+
+        # send all query set channel message to clients
+        for num in routing_data.outgoing_query_sets:
+            player_register_data = self.register_prime[num]
+
+            # can i just send to self with channel_name? i guess yes, we'll see
+            message = {
+                'type':"send.query.set.to.client",
+                'query_set': routing_data.outgoing_query_sets[num]
+            }
+
+            await self.channel_layer.send(player_register_data['channel_name'], message)
 
         # block until all response are in
         await self.__block_until_false(routing_data.has_client_query_outstanding)
