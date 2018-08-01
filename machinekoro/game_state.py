@@ -287,7 +287,7 @@ class GameState:
                         if response['choices']:
                             current_player.investment += 1
                             current_player.coin -= 1
-                        elif not choice:
+                        else:
                             pass
                     elif response['player_num'] == current_player.num and response['q_type'] == 'duces_query':
                         # choice to take a another turn or not
@@ -405,7 +405,7 @@ class Player:
         self.coin = 3
         self.hand = []
         self.landmark = copy.copy(LandMarks)
-        self.investment = []
+        self.investment = None
 
     """
     -defecated method- (gross!)

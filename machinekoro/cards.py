@@ -495,6 +495,6 @@ class Card:
                 self.__take_away_coin(active_player,some_player,amount)
 
         else:
-            print(+str(self) + 'Not activated due to unsatisfied condition')
+            print(str(self) + 'Not activated due to unsatisfied condition')
             pass
 

@@ -268,3 +268,10 @@ class SearchController:
     """
     def __init__(self):
         pass
+
+    def run_sim(self):
+        """
+        This method runs MCTS using UCB1. modifies the stats attributes self.plays , wins , states
+
+        :return:
+        """
