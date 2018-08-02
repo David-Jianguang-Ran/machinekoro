@@ -19,6 +19,7 @@ class TokenRegister(models.Model):
         }
     """
     token = models.CharField(max_length=40)
+    match_session = models.ForeignKey(MatchSession, on_delete=models.CASCADE)
     content = models.TextField()
 
 
@@ -45,6 +46,7 @@ class MatchSession(models.Model):
     - player_list = text json
     """
     match_id = models.CharField(max_length=40)
+    in_progress = models.BooleanField()
     register = models.TextField()
     tracker = models.TextField()
     market = models.TextField()

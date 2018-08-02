@@ -31,7 +31,10 @@ def join_game_poke(request, match_id):
     """
     match_controller = controllers.MatchController()
     token = match_controller.add_player_to_match(match_id, prime=False)
-    return redirect(main_view,token=token)
+    if token:
+        return redirect(main_view,token=token)
+    else:
+        return redirect(error_view,error_msg='Game Session Already in Progress, Connection Failed')
 
 
 def main_view(request, token):
@@ -45,3 +48,10 @@ def main_view(request, token):
         "token":token
     }
     return render(request,'reactEnabled.html',context)
+
+
+def error_view(request, error_msg):
+    context = {
+        'message' : error_msg
+    }
+    return render(request,'error.html',context)
