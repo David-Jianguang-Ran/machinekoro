@@ -1,3 +1,4 @@
+import copy
 import random
 
 # this file contains the card class which is essential for game ops
@@ -265,14 +266,65 @@ CardDex = {
 }
 
 
+class GameState:
+    """
+    This object is purely a data object, all methods are stored in the GameController object
+
+    O attributes:
+
+    - tracker : {
+        active_player :
+        phase :
+        # the possible values for phase:
+        # pre_roll > post_roll > pre_activation > post_activation > post_card_play > Pre_roll
+    }
+
+    - market : {
+        deck_info :
+        low :
+        high :
+    }
+
+    - players : {
+        num : {
+            coin : int
+            landmark: landmark dict
+            hand:  list of cards
+         }
+         num 2 : {
+            ...
+         }
+    }
+    """
+    def __init__(self,player_count):
+        self.tracker = {
+            'active_player_num': 1,
+            'phase': 'pre_roll'
+        }
+        self.market = {
+            'deck_info': copy.deepcopy(CardDex),
+            'low': {},
+            'high': {},
+            'purple': {}
+        }
+        self.players = {}
+        for i in range(1,player_count):
+            self.players[i] = {
+                'num': i,
+                'coin': 3,
+                'landmark': LandMarks,
+                'hand': ['Wheat Field','Bakery'],
+                'snippet': None
+            }
+        self.temp_data = {}
+
+
 class Card:
-    def __init__(self,dict_line):
-        self.name = dict_line['name']
-        self.colour = dict_line['colour']
-        self.card_type = dict_line['type']
-        self.cost = dict_line['cost']
-        self.activations = dict_line['activations']
-        self.limit = dict_line['limit']
+    """
+
+    """
+    def __init__(self,name):
+        self.name = name
 
     def __str__(self):
         return str(self.name)
@@ -294,7 +346,7 @@ class Card:
             taker.coin += giver.coin
             giver.coin = 0
 
-    def activate(self, state, current_player, active_player):
+    def activate(self, state, active_player, current_player=None):
         # this method as all the actions of all regular cards
         # when it is called it will look up the name of the card calling and modify the world appropriately
         if self.name in ['Wheat Field','Ranch','Flower Orchard','Forrest']:
@@ -372,7 +424,7 @@ class Card:
             target = []
             # make list of num for possible card recipient
             for some_player in state.players:
-                if some_player is current_player:
+                if some_player is active_player:
                     pass
                 else:
                     target.append(some_player.num)
@@ -382,7 +434,7 @@ class Card:
                     names.append(card.name)
             query = {
                 "key": "action.query",
-                "player_num": current_player.num,
+                "player_num": active_player.num,
                 "q_type": "card_query_move",
                 'options': [names,target],
             }
@@ -409,13 +461,13 @@ class Card:
             amount = 3
             if active_player.landmark['Shopping Mall']:
                 amount += 1
-            self.__take_away_coin(active_player,current_player,amount)
+            self.__take_away_coin(current_player,active_player,amount)
 
         elif self.name in ['Cafe','Pizza Joint']:
             amount = 1
             if active_player.landmark['Shopping Mall']:
                 amount += 1
-            self.__take_away_coin(active_player,current_player,amount)
+            self.__take_away_coin(current_player,active_player,amount)
 
         elif self.name == 'French Restaurant' :
             amount = 5
@@ -427,14 +479,14 @@ class Card:
             for entry in landmarks:
                 total += entry.value()
             if total >= 2:
-                self.__take_away_coin(active_player,current_player,amount)
+                self.__take_away_coin(current_player, active_player, amount)
 
         elif self.name == 'Family Restaurant':
             amount = 2
             if active_player.landmark['Shopping Mall']:
                 amount += 1
 
-            self.__take_away_coin(active_player,current_player,amount)
+            self.__take_away_coin(current_player,active_player,amount)
 
         elif self.name == 'Members Only Club' :
             landmarks = current_player.landmark
@@ -483,7 +535,7 @@ class Card:
                     choice_t.append(entry)
             query = {
                 "key": "action.query",
-                "player_num": current_player.num,
+                "player_num": active_player.num,
                 "q_type": "card_query_trade",
                 'options': [choice_s,choice_t],
             }

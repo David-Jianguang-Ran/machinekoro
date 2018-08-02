@@ -8,7 +8,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from . import models
-from . import game_state
+from . import game_objects
 
 
 class MatchController:
@@ -165,101 +165,375 @@ class GameController:
 
     - get_query_set
 
-    - process_query_response
+    - apple_query_response
 
     """
-    def __init__(self, match_id=None):
-        self.current_state = None
-        self.match_id = None
-        if match_id:
-            self.__load_state_from_db(match_id)
-            self.match_id = match_id
+    def __init__(self,match_id):
+        self.match_id = match_id
 
-    def initialize_state(self):
-        """
+        match_session = models.MatchSession.objects.get(match_id=match_id)
 
-        :return: None
-        """
-        self.current_state = "some state obj"
-        pass
-
-    def get_query_set(self):
-        """
-        you must have a state loaded in self.current_state before calling this method
-        :return: sends query set to be distributed by player prime's consumer
-        """
-        query_set = self.current_state.get_legal_moves()
-        return query_set
-
-    def process_query_response(self,response_set):
-        """
-        this methods takes a response set and apply all decisions from them then advance state
-        then broadcast new state to group
-        :param response_set: response objs sent from player prime
-        :return:
-        """
-
-        self.__save_state_to_db()
-        pass
-
-    def __send_game_state_update(self):
-        # dump current state into json_set
-        json_set = self.__dump_state_to_json(self.current_state)
-
-        message = {
-            "type": "game.state.update",
-            "match_id":self.match_id ,
-            "content": json_set  # do i need to serialize this ? I hope not
-        }
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(self.match_id, message)
-
-    def __load_state_from_db(self, match_id):
-        """
-        this method loads db obj by game id,
-        :param match_id:
-        :return: nothing, modifys self.current_state
-        """
-        matchsession = models.MatchSession.objects.get(match_id=match_id)
-        tracker = json.loads(matchsession.tracker)
-        market = json.loads(matchsession.market)
-        players = json.loads(matchsession.player_list)
-        self.current_state = game_state.GameState(players,market,tracker)
-
-    def __save_state_to_db(self):
-        """
-        this method takes a state and write data to corresponding MatchSession model
-        :return: Nothing, it just modifis db
-        """
-        # prepare json from world state
-        json_set = self.__dump_state_to_json(self.current_state)
-
-        # save data to db
-        match = models.MatchSession.objects.filter(match_id=self.match_id)
-        match.update(
-            tracker=json_set['tracker'],
-            market=json_set['market'],
-            player_list=json_set['players']
-        )
-        match.save()
+        if match_session.in_progress:
+            self.__load_state_from_db(match_session)
+        else:
+            self.current_state = None
 
     @staticmethod
-    def __dump_state_to_json(state):
-        # prepare json from state
-        tracker_json = json.dumps({
-            "hand_count": state.hand_count,
-            "active_player": state.hand_count % len(state.players),
-            "phase": state.phase
-        })
-        market_json = json.dumps(state.market)
-        player_list_json = json.dumps(state.players)
+    def get_query_set(state):
+        """
+        # the possible values for phase:
+        # pre_roll > post_roll > pre_activation > post_activation > post_card_play > Pre_roll
 
-        json_set = {
-            'tracker' : tracker_json,
-            'market' : market_json,
-            'players' : player_list_json
-        }
-        return json_set
+        :param state:
+        :return:
+        """
+        phase = state.tracker['phase']
+        active_player_num = state.tracker['active_player_num']
+        active_player = state.players[active_player_num]
+
+        # bool flag for taking double turn
+        take_duce = False
+
+        # pre_roll phase
+        #
+        if phase == 'pre_roll':
+            # returns a query object with allowed dice options
+            query = {
+                "key" : "action.query",
+                "player_num" : active_player_num,
+                "q_type":"dice_query_a"
+            }
+            if active_player.landmark['Train Station'] == 1:
+                if active_player.landmark['Moon Tower'] == 1:
+                    query['options'] = [1,2,3]
+                else:
+                    query['options'] = [1,2]
+            else:
+                query['options'] = [1]
+                query['only_option'] = True
+            return [query]
+
+        # post_roll Phase
+        elif phase == 'post_roll':
+            # returns the  list of queries to active player to choose which diceroll to apply
+            dice_roll = state.temp_data['dice_roll']
+
+            query = {
+                "key": "action.query",
+                "player_num": active_player_num,
+                "q_type": "dice_query_b",
+                "options": dice_roll
+            }
+            if len(dice_roll) != 3:
+                query['only_option'] = True
+            return [query]
+
+        #
+        elif phase == "pre_activation":
+            activation = state.temp_data['activation']
+
+            # returns a query asking whether to apply harbour (activation + 2)
+            if active_player.landmark['Harbor'] == 1 and activation >= 10:
+                query = {
+                    "key": "action.query",
+                    "player_num": active_player_num,
+                    "q_type": "dice_query_c",
+                    "options": [True,False]
+                }
+            else:
+                query = {
+                    "key": "action.query",
+                    "player_num": active_player_num,
+                    "q_type": "dice_query_c",
+                    "options": [True, False],
+                    "only_option" : True
+                }
+            return [query]
+
+        #
+        elif phase == 'activation':
+            query_set = state.temp_data['query_set']
+            # ??? what the hell is this? what does this do?
+            # answer: no query is prepared here because query from card activation must be generated
+            # when the card action is applied, therefore here we only copy queries from an attribute and return them
+            return query_set
+
+        #
+        elif phase == "post_activation":
+            # returns a query object with allowed card play
+            coin = active_player.coin
+            market = state.market
+            options = []
+            for some_card in market.high:
+                if coin >= market.deck_info[some_card].cost:
+                    options.append(some_card)
+            for some_card in state.market.low:
+                if coin >= market.deck_info[some_card].cost:
+                    options.append(some_card)
+            for some_card in state.market.purple:
+                if coin >= market.deck_info[some_card].cost and some_card not in active_player.hand:
+                    options.append(some_card)
+
+            # if player has airpot, add another option
+            if active_player.landmark['Airport']:
+                options.append('Activate Airport')
+
+            query_list = [{
+                "key" : "action.query" ,
+                "player_num" : active_player_num,
+                "q_type": "card_play_query",
+                "options": options
+            }]
+            return query_list
+
+        #
+        elif phase == "post_card_play":
+            # returns query object with tech start-up or whatever
+            query_list = []
+            if 'Tech Start-up' in active_player.hand and active_player.coin > 0 :
+                query = {
+                    "key" : "action.query" ,
+                    "player_num" : active_player_num,
+                    "q_type": "invest_query",
+                    "options": [True,False]
+                }
+                query_list.append(query)
+
+            if state.temp_data['duces']:
+                query = {
+                    "key" : "action.query" ,
+                    "player_num" : active_player_num,
+                    "q_type": "duces_query",
+                    "options": [True,False]
+                }
+                query_list.append(query)
+                # Clean up
+                state.temp_data['duces'] = False
+
+            return query_list
+
+    def apply_query_response(self,state,response_set):
+        """
+
+        :param state:
+        :param response_set:
+        :return:
+        """
+        phase = state.tracker['phase']
+        active_player_num = state.tracker['active_player_num']
+        active_player = state.players[active_player_num]
+
+        if phase == 'pre_roll':
+            for response in response_set:
+                # rolls dice according to choice
+                if response['player_num'] == active_player_num and response['q_type'] == 'dice_query_a':
+                    # check if message is the right type and num
+                    diceroll = []
+                    i = response['choices']
+                    n = 0
+                    while n < i :
+                        diceroll.append(random.choice(range(1,7)))
+                        n += 1
+                    state.temp_data['dice_roll'] = diceroll
+                else:
+                    print("Miss matched query during pre_roll process")
+            state.tracker['phase'] = 'post_roll'
+
+        elif phase == 'post_roll':
+            # takes a list of query responses and applies all to the state empty snippet
+            for response in response_set:
+                if response['player_num'] == active_player_num and response['q_type'] == 'dice_query_b':
+                    choices = response['choices']
+
+                    # check for doubles
+                    if choices[0] == choices[1]:
+                        state.temp_data['duces'] = True
+                    activation = sum(choices)
+                    state.temp_data['activation'] = activation
+                else:
+                    print("Miss matched query during post_roll process")
+            state.tracker['phase'] = 'pre_activation'
+
+        elif phase == "pre_activation":
+            # takes the query and modify activation and and calculates activation
+            activation = state.temp_data.activation
+            for response in response_set:
+                if response['player_num'] == active_player_num and response['q_type'] == 'dice_query_c':
+                    choice = response['choices']
+                    if choice is False:
+                        pass
+                    elif choice is True:
+                        activation += 2
+                    pass
+                else:
+                    print("Miss matched query during pre_activation process")
+
+            # applies activation to all player's hand, collect query and add to state.temp_data with key query_set
+            self.__resolve_activation(state,activation)
+
+            # increment phase tracker
+            state.tracker.phase = 'activations'
+
+        elif phase == "activation":
+            # takes state and query generated from activations and modifies and returns the state
+            if response_set:
+                for response in response_set:
+                    if response['q_type'] == 'card_query_demo':
+                        choice = response['choices']
+                        active_player.landmark[choice] = 0
+                        active_player.coin += 8
+                    elif response['q_type'] == 'card_query_move':
+                        card_choice = response['choices'][0]
+                        player_choice = state.players[response['choices'][1]]
+                        for card in active_player.hand and card == card_choice:
+                            player_choice.hand.append(card)
+                            active_player.hand.remove(card)
+                            active_player.coin += 4
+                    elif response['q_type'] == "card_query_trade":
+                        self_choice = response['choices'][0]
+                        target_player = state.players[response['choices'][1].key()]
+                        target_card = response['choices'][1].value()
+                        for card in active_player.hand and card == self_choice:
+                            target_player.hand.append(card)
+                            active_player.hand.remove(card)
+                        for card in target_player.hand and card == target_card:
+                            active_player.hand.append(card)
+                            target_player.hand.remove(card)
+            elif not response_set:
+                print("No response received advance state without action")
+
+            # landmark['City Hall'] logic:
+            if active_player.coin == 0:
+                active_player.coin = 1
+
+            state.tracker['phase'] = 'post_activation'
+
+        elif phase == "post_activation":
+            # takes state and play card action and modifies and returns the state
+            # card play happens here
+            # remember to charge for cards!!!
+            for response in response_set:
+                if response['player_num'] == active_player_num and response['q_type'] == 'card_play_query':
+                    card_choice = response['choices']
+                    # landmark['Airport'] logic here
+                    if card_choice == "Activate Airport":
+                        active_player.coin += 10
+                    else:
+                        self.__buy_card_from_market(state,active_player,card_choice)
+
+            state.tracker['phase'] = 'post_card_play'
+
+        elif phase == "post_card_play":
+            if response_set:
+                for response in response_set:
+                    if response['player_num'] == active_player_num and response['q_type'] == 'invest_query':
+                        # choice to invest 1 coin or not
+                        if response['choices']:
+                            active_player.investment += 1
+                            active_player.coin -= 1
+                        else:
+                            pass
+                    elif response['player_num'] == active_player_num and response['q_type'] == 'duces_query':
+                        # choice to take a another turn or not
+                        if response['choices']:
+                            take_duce = True
+
+            state.tracker.phase = 'pre_roll'
+
+            if state.temp_data['duces'] and take_duce:
+                state.temp_data['duces'] = False
+            else:
+                state.tracker['active_player_num'] += 1
+                if state.tracker['active_player_num'] > len(state.players):
+                    state.tracker['active_player_num'] = 1
+
+    @staticmethod
+    def __resolve_activation(state,activation_num):
+        active_player_num = state.tracker['active_player_num']
+        active_player = state.players[active_player_num]
+
+        query_set = []
+
+        for some_player in state.players:
+            # activate active player hand (non-red)
+            if some_player.num == active_player_num:
+                for some_card_name in some_player.hand:
+                    card_info = game_objects.CardDex[some_card_name]
+                    if card_info['activation'] == activation_num and card_info['colour'] in ['Blue','Green','Purple']:
+                        card_obj = game_objects.Card(some_card_name)
+                        # some activation may generate query to player
+                        any_query = card_obj.activate(state,active_player)
+                        query_set.append(any_query)
+            # activate other player blue and red
+            else:
+                for some_card_name in some_player.hand:
+                    card_info = game_objects.CardDex[some_card_name]
+                    if card_info['activation'] == activation_num and card_info['colour'] in ['Blue','Red']:
+                        card_obj = game_objects.Card(some_card_name)
+                        # some activation may generate query to player
+                        any_query = card_obj.activate(state,active_player,some_player)
+                        query_set.append(any_query)
+
+        state.temp_data['query_set'] = query_set
+
+    @staticmethod
+    def __buy_card_from_market(state,active_player,card_choice):
+        """
+        This method modifies the market according to what card the player has decided to purchase
+        This methos also replenishes the piles and modifies deck_info accordingly
+        :param state:
+        :param active_player:
+        :param card_choice:
+        :return:
+        """
+        market = state.market
+        card_info = market.deck_info[card_choice]
+
+        if card_info['cost'] >= active_player.coin:
+            if card_info['type'] == 'low':
+                market.low[card_choice] -= 1
+            elif card_info['type'] == 'high':
+                market.high[card_choice] -= 1
+            elif card_info['type'] == 'purple' and card_choice not in active_player.hand:
+                market.purple[card_choice] -= 1
+        else:
+            print(active_player + "unable to afford action:" + card_choice)
+
+        list_o_pile_name = ['low','high','purple']
+
+        for pile_type in list_o_pile_name:
+            pile_dict = market[pile_type]
+            # remove empty dict entires
+            for key in pile_dict:
+                if pile_dict[key] == 0:
+                    pile_dict.pop(key)
+
+            # keep drawing untill there are five type of cards for normal,
+            # 2 types for purple
+            if pile_type == 'purple':
+                limit = 2
+            else:
+                limit = 5
+
+            while len(pile_dict) < limit:
+                    new_card_info = random.choice(market.deck_info)
+                    if new_card_info['type'] == pile_type and new_card_info['limit'] > 0:
+                        if pile_dict[new_card_info.name]:
+                            pile_dict[new_card_info.name] += 1
+                        else:
+                            pile_dict[new_card_info.name] = 1
+
+                        new_card_info['limit'] -= 1
+                        break
+                    else:
+                        pass
+
+    def __load_state_from_db(self,match_session):
+        self.current_state = match_session
+
+    def __save_state_to_db(self):
+        # dont forget the temp data
+        pass
 
 
 class SearchController:
