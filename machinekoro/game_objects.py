@@ -1,5 +1,6 @@
 import copy
 import random
+import json
 
 # this file contains the card class which is essential for game ops
 # the info on the game is on http://machi-koro.wikia.com/wiki/Machi_Koro_Wiki
@@ -296,27 +297,32 @@ class GameState:
          }
     }
     """
-    def __init__(self,player_count):
-        self.tracker = {
-            'active_player_num': 1,
-            'phase': 'pre_roll'
-        }
-        self.market = {
-            'deck_info': copy.deepcopy(CardDex),
-            'low': {},
-            'high': {},
-            'purple': {}
-        }
-        self.players = {}
-        for i in range(1,player_count):
-            self.players[i] = {
-                'num': i,
-                'coin': 3,
-                'landmark': LandMarks,
-                'hand': ['Wheat Field','Bakery'],
-                'snippet': None
+    def __init__(self,player_count=None,json_set=None):
+        if json_set:
+            for some_type in ['tracker','market','players','temp_data']:
+                self[some_type] = json.loads(json_set[some_type])
+
+        elif player_count:
+            self.tracker = {
+                'active_player_num': 1,
+                'phase': 'pre_roll'
             }
-        self.temp_data = {}
+            self.market = {
+                'deck_info': copy.deepcopy(CardDex),
+                'low': {},
+                'high': {},
+                'purple': {}
+            }
+            self.players = {}
+            for i in range(1,player_count):
+                self.players[i] = {
+                    'num': i,
+                    'coin': 3,
+                    'landmark': LandMarks,
+                    'hand': ['Wheat Field','Bakery'],
+                    'snippet': None
+                }
+            self.temp_data = {}
 
 
 class Card:

@@ -323,7 +323,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     @staticmethod
-    async def __block_until_false(self, some_boolian, freq=0.5):
+    async def __block_until_false(some_boolian, freq=0.5):
         """
         This method blocks flow and checks every freq second,
         if boolian is false, it returns nothing

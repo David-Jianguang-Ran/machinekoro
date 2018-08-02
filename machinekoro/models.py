@@ -51,3 +51,4 @@ class MatchSession(models.Model):
     tracker = models.TextField()
     market = models.TextField()
     player_list = models.TextField()
+    temp_data = models.TextField()

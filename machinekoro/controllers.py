@@ -75,14 +75,17 @@ class MatchController:
         match_obj = models.MatchSession.objects.get(match_id=match_id)
         match_register = json.loads(match_obj.register)
 
-        # create new register entry
-        num = len(match_register) + 1
-        register_entry = {
-            'match_id': match_id,
-            'player_num': num,
-            'is_prime': prime,
-            'is_bot': bot,
-            # should i add a customizable name & portrait here?
+        if match_obj.in_progress:
+            return
+        else:
+            # create new register entry
+            num = len(match_register) + 1
+            register_entry = {
+                'match_id': match_id,
+                'player_num': num,
+                'is_prime': prime,
+                'is_bot': bot,
+                # should i add a customizable name & portrait here?
         }
         match_register['num'] = register_entry
 
@@ -150,9 +153,45 @@ class MatchController:
         return content
 
     @staticmethod
-    def switch_prime_player():
-        # not very sure about this
-        pass
+    def handle_player_disconnect(discon_register):
+        """
+        This method takes a player register, change is_bot to true, if player is prime, another prime is selected
+        then everything is saved to db
+        note the the token register will not be updated,
+        but since no player can have the same num, the token will not be needed anymore
+        :param register:
+        :return:
+        """
+        # save some variables in memory
+        match_id = discon_register['match_id']
+        discon_num = discon_register['player_num']
+        # look up and load prime register by match_id
+        match_obj = models.MatchSession.objects.get(match_id=match_id)
+        prime_register = json.loads(match_obj.register)
+        # set disconnected player to bot
+        discon_register['is_bot'] = True
+        if discon_register['is_prime']:
+            # choose one from a list of num of human players
+            human_players = [key for key in prime_register if not prime_register[key]['is_bot']]
+            new_prime = random.choice(human_players)
+            # set this player to prime
+            prime_register[new_prime]['is_prime'] = True
+            # set discon to not prime
+            discon_register['is_prime'] = False
+
+        # save new discon register to prime, then to db
+        prime_register[discon_num] = discon_register
+        prime_register_json = json.dumps(prime_register)
+        match_obj.register = prime_register_json
+        match_obj.save()
+
+        # send update to group
+        message = {
+            "type": "prime.register.update",
+            "content": prime_register_json
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(match_id, message)
 
 
 class GameController:
@@ -528,12 +567,57 @@ class GameController:
                     else:
                         pass
 
-    def __load_state_from_db(self,match_session):
-        self.current_state = match_session
+    def __load_state_from_db(self, match_id):
+        """
+        this method loads db obj by game id,
+        :param match_id:
+        :return: nothing, modify self.current_state
+        """
+        matchsession = models.MatchSession.objects.get(match_id=match_id)
+        json_data = {
+            'tracker':matchsession.tracker,
+            'market':matchsession.market,
+            'players':matchsession.player_list,
+            'temp_data':matchsession.temp_data
+        }
+
+        self.current_state = game_objects.GameState(json_set=json_data)
 
     def __save_state_to_db(self):
-        # dont forget the temp data
-        pass
+        """
+        this method takes a state and write data to corresponding MatchSession model
+        :return: Nothing, it just modify db
+        """
+        # prepare json from world state
+        json_set = self.__dump_state_to_json(self.current_state)
+
+        # save data to db
+
+        match = models.MatchSession.objects.filter(match_id=self.match_id)
+        match.update(
+            in_progress=True,
+            tracker=json_set['tracker'],
+            market=json_set['market'],
+            player_list=json_set['players'],
+            temp_data=json_set['temp_data']
+            )
+        match.save()
+
+    @staticmethod
+    def __dump_state_to_json(state):
+        # prepare json from state
+        tracker_json = json.dumps(state.tracker)
+        market_json = json.dumps(state.market)
+        player_list_json = json.dumps(state.players)
+        temp_data_json = json.dumps(state.temp_data)
+
+        json_set = {
+            'tracker': tracker_json,
+            'market': market_json,
+            'players': player_list_json,
+            'temp_data': temp_data_json
+        }
+        return json_set
 
 
 class SearchController:
