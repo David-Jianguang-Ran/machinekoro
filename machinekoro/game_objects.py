@@ -327,7 +327,8 @@ class GameState:
 
 class Card:
     """
-
+    This object is instanced when GameController is running resolve_activation
+    This will not be saved to state (state saves only card name)
     """
     def __init__(self,name):
         self.name = name

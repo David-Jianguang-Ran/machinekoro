@@ -204,7 +204,7 @@ class GameController:
 
     - get_query_set
 
-    - apple_query_response
+    - apply_query_response
 
     """
     def __init__(self,match_id):
@@ -216,6 +216,14 @@ class GameController:
             self.__load_state_from_db(match_session)
         else:
             self.current_state = None
+
+    def initialize_state(self):
+        match_session = models.MatchSession.objects.get(match_id=self.match_id)
+        prime_register = json.loads(match_session.register)
+
+        self.current_state = game_objects.GameState(len(prime_register))
+
+        self.__save_state_to_db()
 
     @staticmethod
     def get_query_set(state):
@@ -361,6 +369,7 @@ class GameController:
         phase = state.tracker['phase']
         active_player_num = state.tracker['active_player_num']
         active_player = state.players[active_player_num]
+        take_duce = False
 
         if phase == 'pre_roll':
             for response in response_set:
@@ -485,6 +494,9 @@ class GameController:
                 state.tracker['active_player_num'] += 1
                 if state.tracker['active_player_num'] > len(state.players):
                     state.tracker['active_player_num'] = 1
+
+        # then saves current state to db
+        self.__save_state_to_db()
 
     @staticmethod
     def __resolve_activation(state,activation_num):

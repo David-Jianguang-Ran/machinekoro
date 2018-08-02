@@ -2,7 +2,6 @@ from asgiref.sync import async_to_sync, sync_to_async
 from channels.generic.websocket import SyncConsumer, AsyncJsonWebsocketConsumer
 
 import asyncio
-import copy
 import json
 
 from . import controllers
@@ -394,7 +393,7 @@ class GameProcessorConsumer(SyncConsumer):
         prime_channel_name = event['prime_channel_name']
         game_controller = controllers.GameController(match_id=match_id)
 
-        query_set = game_controller.get_query_set()
+        query_set = game_controller.get_query_set(game_controller.current_state)
 
         message = {
             "type":"process_query_set",
@@ -422,7 +421,7 @@ class GameProcessorConsumer(SyncConsumer):
         response_set = event['response_set']
         game_controller = controllers.GameController(match_id=match_id)
 
-        game_controller.process_query_response(response_set)
+        game_controller.apply_query_response(game_controller.current_state,response_set)
 
         message = {
             "type":"process.response.complete",
