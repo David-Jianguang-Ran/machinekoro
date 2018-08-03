@@ -305,7 +305,8 @@ class GameState:
         elif player_count:
             self.tracker = {
                 'active_player_num': 1,
-                'phase': 'pre_roll'
+                'phase': 'pre_roll',
+                'winner': None
             }
             self.market = {
                 'deck_info': copy.deepcopy(CardDex),

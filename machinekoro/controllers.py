@@ -210,8 +210,8 @@ class MatchController:
 class GameController:
     """
     this object is used to manage loading/saving and running the game
-
-    O methods callable by State processor:
+    this object is child for game processor consumer or tree search controller
+    O methods:
 
     - initialize_state
 
@@ -231,6 +231,11 @@ class GameController:
             self.current_state = None
 
     def initialize_state(self):
+        """
+        This method is called by the prime player with type "initialize.state"
+        This method sets up a state to hold in self.current state and saves it to db also
+        :return:
+        """
         match_session = models.MatchSession.objects.get(match_id=self.match_id)
         prime_register = json.loads(match_session.register)
 
@@ -479,9 +484,15 @@ class GameController:
                     # landmark['Airport'] logic here
                     if card_choice == "Activate Airport":
                         active_player.coin += 10
+                    elif card_choice in ["City Hall","Harbour","Train Station",
+                                         "Shopping Mall","Amusement Park",
+                                         "Moon Tower","Airport"]:
+                        active_player.landmark[card_choice] = 1
                     else:
                         self.__buy_card_from_market(state,active_player,card_choice)
 
+            # if winner, write winner num to state
+            state.tracker['winner'] = self.__check_winner(state)
             state.tracker['phase'] = 'post_card_play'
 
         elif phase == "post_card_play":
@@ -643,6 +654,22 @@ class GameController:
             'temp_data': temp_data_json
         }
         return json_set
+
+    @staticmethod
+    def __check_winner(state):
+        winner = None
+        for some_player_num in state.players:
+            if state.players[some_player_num]['landmark'] == {
+                    "City Hall": True,
+                    "Harbour": True,
+                    "Train Station": True,
+                    "Shopping Mall": True,
+                    "Amusement Park": True,
+                    "Moon Tower": True,
+                    "Airport": True
+            }:
+                winner = some_player_num
+        return winner
 
 
 class SearchController:
