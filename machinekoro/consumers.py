@@ -98,7 +98,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         """
         This method is called by a broadcast message into group from GameProcessor
         :param event: looks something like this:
-            message = {
+            event = {
             "type": "game.state.update",
             "match_id":self.match_id ,
             "content": json_set = {

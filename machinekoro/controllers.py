@@ -93,16 +93,6 @@ class MatchController:
         match_obj.register = json.dumps(match_register)
         match_obj.save()
 
-        # if this is not the first player(prime player) in a game,
-        # send a message in channel_layer to all in group to update new player info
-        if not prime:
-            message = {
-                "type": "prime.register.update",
-                "content": match_register  # do i need to serialize this ? I hope not
-            }
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(match_id, message)
-
         # if new player is a human player, add register to TokenRegister model
         if not bot:
             token = self.__register_to_token_table(register_entry, match_id)
@@ -119,15 +109,18 @@ class MatchController:
         content_json = json.dumps(content)
         token_str = str(uuid.uuid5(self.token_namespace,content_json))
 
+        # look up match obj
+        match_obj = models.MatchSession.objects.get(match_id=match_id)
+
         # create register obj
         register_obj = models.TokenRegister.objects.create(
             token=token_str,
-            content=content_json
+            content=content_json,
+            match_session=match_obj
         )
         register_obj.save()
 
         # add register to  match obj, registers field
-        match_obj = models.MatchSession.objects.get(match_id=match_id)
         match_obj.registers_set.add(register_obj)
         match_obj.save()
         return token_str
@@ -144,12 +137,32 @@ class MatchController:
         register_obj = models.TokenRegister.objects.get(token=token_str)
         content = json.loads(register_obj.content)
 
+        # register look up and modification
+        match_id = content['match_id']
+        player_num = content['num']
         content['self_channel_name'] = channel_name
 
+        # gets MatchSession object and updates this player's prime register entry
+        match_obj = models.MatchSession.objects.get(token_str=match_id)
+        prime_register = json.loads(match_obj.register)
+        prime_register[player_num] = content
+
+        # if this is not the first player(prime player) in a game,
+        # send a message in channel_layer to all in group to update new player info
+        if not content['is_prime']:
+            message = {
+                "type": "prime.register.update",
+                "content": prime_register  # do i need to serialize this ? I hope not
+            }
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(match_id, message)
+
         # save new content to db
-        content_json = json.dumps(content)
-        register_obj.content = content_json
+        register_obj.content = json.dumps(content)
         register_obj.save()
+
+        match_obj.register = json.dumps(prime_register)
+        match_obj.save()
         return content
 
     @staticmethod

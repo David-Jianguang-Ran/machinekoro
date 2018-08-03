@@ -1,28 +1,6 @@
 from django.db import models
 
 
-class TokenRegister(models.Model):
-    """
-    This object stores setting dicts with an uuid for MatchController to call on
-    This is ONLY used to pass data to player to consumers, not a player register
-    attributes:
-    - token = string
-    - match_session = foreign key'ed to GameSession
-    - content = json string
-        sample:
-        register_entry = {
-            'match_id': match_id uuid string
-            'player_num': num int
-            'is_prime': bool
-            'is_bot': bool
-            'self_channel_name' : consumer channel name (uuid?/string?)
-        }
-    """
-    token = models.CharField(max_length=40)
-    match_session = models.ForeignKey(MatchSession, on_delete=models.CASCADE)
-    content = models.TextField()
-
-
 class MatchSession(models.Model):
     """
     This object stores game state with a tracker object and a match serial
@@ -52,3 +30,28 @@ class MatchSession(models.Model):
     market = models.TextField()
     player_list = models.TextField()
     temp_data = models.TextField()
+
+
+class TokenRegister(models.Model):
+    """
+    This object stores setting dicts with an uuid for MatchController to call on
+    This is ONLY used to pass data to player to consumers, not a player register
+    attributes:
+    - token = string
+    - match_session = foreign key'ed to GameSession
+    - content = json string
+        sample:
+        register_entry = {
+            'match_id': match_id uuid string
+            'player_num': num int
+            'is_prime': bool
+            'is_bot': bool
+            'self_channel_name' : consumer channel name (uuid?/string?)
+        }
+    """
+    token = models.CharField(max_length=40)
+    match_session = models.ForeignKey(MatchSession, on_delete=models.CASCADE)
+    content = models.TextField()
+
+
+
