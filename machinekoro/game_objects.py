@@ -300,7 +300,7 @@ class GameState:
     def __init__(self,player_count=None,json_set=None):
         if json_set:
             for some_type in ['tracker','market','players','temp_data']:
-                self[some_type] = json.loads(json_set[some_type])
+                self.some_type = json.loads(json_set[some_type])
 
         elif player_count:
             self.tracker = {
@@ -324,6 +324,22 @@ class GameState:
                     'snippet': None
                 }
             self.temp_data = {}
+
+    def __str__(self):
+        """
+        This method has been overwritten to exclude temp_data in prints and comparisons
+        :return:
+        """
+        dict_representation = self.__dict__
+        dict_representation.pop('temp_data')
+        return str(dict_representation)
+
+    def __eq__(self, other):
+        """
+        This method has been overwritten for comparing states
+        :return:
+        """
+        return self.__dict__ == other.__dict__
 
 
 class Card:
