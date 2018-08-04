@@ -1,3 +1,4 @@
+import copy
 import json
 import math
 import random
@@ -676,12 +677,97 @@ class SearchController:
     """
     this object is used to load a state, perform simulation and make decision
     """
-    def __init__(self):
-        pass
+    def __init__(self,query_set,match_id,max_moves= 20, max_time= 10, c=1.4):
+        self.query_set_prime = query_set
+        self.game = GameController(match_id)
+        self.c = c
+        self.stat_table = {
+            'plays':{},
+            'wins':{}
+        }
+        self.max_moves = max_moves
+        self.max_time = max_time
+        self.max_depth_reached = 0
 
     def run_sim(self):
         """
         This method runs MCTS using UCB1. modifies the stats attributes self.plays , wins , states
 
+        :return: nothing, this method updates self.stat_table as it runs
+        """
+        expansion_stage = True
+        root = True
+        query_set = self.query_set_prime
+
+        sim_states = [copy.deepcopy(self.game.current_state)]
+        current_state = sim_states[-1]
+        current_player = current_state['tracker']['active_player']
+        visited_states = []
+
+        stat_table = self.stat_table
+        plays = stat_table['plays']
+        wins = stat_table['wins']
+
+        winner_found = None
+
+        # with each iteration below, a move is made and a new state is visited and recorded
+        for i in range(1,self.max_moves):
+            # get query set or work with prime query set at root of tree
+            if not root:
+                query_set = self.game.get_query_set(current_state)
+            else:
+                root = False
+
+            move_states = self.get_move_states_from_query_set(query_set)
+
+            chosen_state = self.choose_move_state_from_set(move_states,stat_table)
+
+            # if chosen_state is new to stat table move into expansion stage
+            if not expansion_stage and (current_player,chosen_state) not in plays:
+                expansion_stage = True
+                plays[(current_player,chosen_state)] = 0
+                wins[(current_player,chosen_state)] = 0
+                # record max depth reached for fun
+                if i > self.max_depth_reached:
+                    self.max_depth_reached = i
+
+            # record the state to lists
+            sim_states.append(chosen_state)
+            visited_states.append((current_player,chosen_state))
+
+            # if a winner is found, break out of moving loop
+            winner = chosen_state['tracker']['winner']
+            if winner:
+                winner_found = winner
+                break
+
+        # record data to self.stat_table
+        for player, state in visited_states:
+            if (player, state) not in plays:
+                continue
+            plays[(player,state)] += 1
+            if player == winner_found:
+                wins[(player,state)] += 1
+
+    @staticmethod
+    def get_move_states_from_query_set(query_set):
+        """
+        This method takes a query set, makes a move state for each possible combination of moves
+        :param query_set:
         :return:
         """
+        move_states = query_set
+        return move_states
+
+    @staticmethod
+    def choose_move_state_from_set(move_states,stat_table):
+        """
+        This method choose one move state from the set,
+        if possible, this method will use UCB1
+        if not a random choice will be made
+        :param move_states:
+        :param stat_table:
+        :return:
+        """
+        move_state = random.choice(move_states)
+        return move_state
