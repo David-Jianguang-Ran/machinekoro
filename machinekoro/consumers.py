@@ -110,9 +110,12 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         channel_laye
         :return:
         """
-        message = event['content']
-        message['key'] = "game_state_update"
-        await self.send_json(json.dumps(message))
+        event['key'] = "game_state_update"
+        await self.send_json(json.dumps(event))
+
+    async def dice_roll_update(self,event):
+        event['key'] = "dice_roll_update"
+        await self.send_json(event)
 
     async def send_query_set_to_client(self, event):
         """
@@ -423,12 +426,20 @@ class GameProcessorConsumer(SyncConsumer):
 
         game_controller.apply_query_response(game_controller.current_state,response_set)
 
+        # send update message to all in game group
+        content = game_controller.dump_state_to_json(game_controller.current_state)
+        update = {
+            "type":"world.update",
+            "content":content
+        }
+        async_to_sync(self.channel_layer.send)(match_id,update)
+
+        # send message to prime to signal process complete
         message = {
             "type":"process.response.complete",
             "match_id": match_id
         }
-
-        async_to_sync(self.channel_layer.send(prime_channel_name, message))
+        async_to_sync(self.channel_layer.send)(prime_channel_name, message)
 
 
 class BotProcessorConsumer(SyncConsumer):

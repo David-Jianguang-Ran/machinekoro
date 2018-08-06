@@ -75,6 +75,11 @@ class MatchController:
         """
         # looks up db object by match_id and load json content
         match_obj = models.MatchSession.objects.get(match_id=match_id)
+
+        # bail out early if no match_obj with the id
+        if not match_obj:
+            return
+
         match_register = json.loads(match_obj.register)
 
         if match_obj.in_progress:
@@ -411,20 +416,20 @@ class GameController:
             # takes a list of query responses and applies all to the state empty snippet
             for response in response_set:
                 if response['player_num'] == active_player_num and response['q_type'] == 'dice_query_b':
-                    choices = response['choices']
+                    state.temp_data['dice_roll'] = response['choices']
 
                     # check for doubles
-                    if choices[0] == choices[1]:
+                    if response['choices'][0] == response['choices'][1]:
                         state.temp_data['duces'] = True
-                    activation = sum(choices)
-                    state.temp_data['activation'] = activation
+                    state.temp_data['activation'] = sum(state.temp_data['dice_roll'])
                 else:
                     print("Miss matched query during post_roll process")
             state.tracker['phase'] = 'pre_activation'
 
         elif phase == "pre_activation":
             # takes the query and modify activation and and calculates activation
-            activation = state.temp_data.activation
+            choice = None
+            activation = state.temp_data['activation']
             for response in response_set:
                 if response['player_num'] == active_player_num and response['q_type'] == 'dice_query_c':
                     choice = response['choices']
@@ -435,6 +440,15 @@ class GameController:
                     pass
                 else:
                     print("Miss matched query during pre_activation process")
+
+            # sends an update for activations
+            message = {
+                'type':"dice.roll.update",
+                "dice_roll":state.temp_data['dice_roll'],
+                "harbour_+2": choice
+            }
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(self.match_id, message)
 
             # applies activation to all player's hand, collect query and add to state.temp_data with key query_set
             self.__resolve_activation(state,activation)
@@ -627,7 +641,7 @@ class GameController:
         :return: Nothing, it just modify db
         """
         # prepare json from world state
-        json_set = self.__dump_state_to_json(self.current_state)
+        json_set = self.dump_state_to_json(self.current_state)
 
         # save data to db
 
@@ -642,7 +656,7 @@ class GameController:
         match.save()
 
     @staticmethod
-    def __dump_state_to_json(state):
+    def dump_state_to_json(state):
         # prepare json from state
         tracker_json = json.dumps(state.tracker)
         market_json = json.dumps(state.market)
