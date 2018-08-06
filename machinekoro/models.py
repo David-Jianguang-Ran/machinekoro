@@ -3,7 +3,7 @@ from django.db import models
 
 class MatchSession(models.Model):
     """
-    This object stores game state with a tracker object and a match serial
+    This object stores game state in components wit a match serial
     attributes:
     - game_id = string uuid # maybe i should change it to something more unique
     - register = text json {
@@ -35,11 +35,11 @@ class MatchSession(models.Model):
 class TokenRegister(models.Model):
     """
     This object stores setting dicts with an uuid for MatchController to call on
-    This is ONLY used to pass data to player to consumers, not a player register
+    This is ONLY used to pass data to player to consumers
     attributes:
     - token = string
     - match_session = foreign key'ed to GameSession
-    - content = json string
+    - content = json text data
         sample:
         register_entry = {
             'match_id': match_id uuid string
@@ -52,6 +52,22 @@ class TokenRegister(models.Model):
     token = models.CharField(max_length=40)
     match_session = models.ForeignKey(MatchSession, on_delete=models.CASCADE)
     content = models.TextField()
+
+
+class TreeSearchData(models.Model):
+    """
+    This object is used to store simulation data for the TreeSearchController
+    All data is stored as json text field
+    attributes:
+    - plays = json text data
+    - wins = json text data
+    """
+    label_options = ['default']
+
+    label = models.CharField(max_length=20,choices=label_options)
+    plays = models.TextField()
+    wins = models.TextField()
+
 
 
 
