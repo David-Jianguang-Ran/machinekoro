@@ -233,13 +233,24 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         for num in routing_data.outgoing_query_sets:
             player_register_data = self.register_prime[num]
 
-            # can i just send to self with channel_name? i guess yes, we'll see
-            message = {
-                'type':"send.query.set.to.client",
-                'query_set': routing_data.outgoing_query_sets[num]
-            }
-
-            await self.channel_layer.send(player_register_data['channel_name'], message)
+            if player_register_data['is_bot']:
+                # if player is bot, send processing request to botprocessor
+                message = {
+                    "type":"respond.query",
+                    "prime_channel_name":self.channel_name,
+                    "match_id":player_register_data['match_id'],
+                    "player_num":num,
+                    "query_set":routing_data.outgoing_query_sets[num]
+                }
+                await self.channel_layer.send("BotProcessor",message)
+            else:
+                # send to consumer and to client
+                # can i just send to self with channel_name? i guess yes, we'll see
+                message = {
+                    'type':"send.query.set.to.client",
+                    'query_set': routing_data.outgoing_query_sets[num]
+                }
+                await self.channel_layer.send(player_register_data['channel_name'], message)
 
         # block until all response are in
         await self.__block_until_false(routing_data.has_client_query_outstanding)
@@ -452,5 +463,31 @@ class BotProcessorConsumer(SyncConsumer):
     - respond_query
 
     """
-    async def respond_query(self,event):
-        pass
+    def respond_query(self,event):
+        """
+
+        :param event:
+        :return:
+        """
+        query_set = event['query_set']
+        player_num = event['player_num']
+        match_id = event['match_id']
+        prime_channel_name = event['prime_channel_name']
+
+        # init tree search controller
+        lorax = controllers.SearchController(query_set,player_num,match_id)
+
+        # if we want the bot to access past data unhex the line below
+        lorax.load_simulation_data()
+
+        # run sim and respond to q set
+        response_set = lorax.respond_to_query_set()
+
+        # send response message to prime player
+        message = {
+            "type":"process.client.response",
+            "response_set":response_set
+        }
+
+        async_to_sync(self.channel_layer.send(prime_channel_name,message))
+
