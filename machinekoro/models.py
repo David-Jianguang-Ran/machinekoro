@@ -51,7 +51,7 @@ class TokenRegister(models.Model):
         }
     """
     token = models.CharField(max_length=40)
-    match_session = models.ForeignKey(MatchSession, on_delete=models.CASCADE)
+    match_session = models.ForeignKey(MatchSession,verbose_name="session", on_delete=models.CASCADE)
     content = models.TextField()
 
 
@@ -63,7 +63,7 @@ class TreeSearchData(models.Model):
     - plays = json text data
     - wins = json text data
     """
-    label_options = ['default']
+    label_options = [("na",'default')]
 
     label = models.CharField(max_length=20,choices=label_options)
     plays = models.TextField()

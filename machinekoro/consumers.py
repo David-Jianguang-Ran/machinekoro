@@ -46,12 +46,6 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
 
     """
-    def __init__(self,*args,**kwargs):
-        super().__init__(self,*args,**kwargs)
-        self.register = None
-        self.register_prime = None
-        self.query_routing_data = None
-
     async def connect(self):
         """
         This method is called on connection with ws
@@ -59,9 +53,14 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         it also updates the token record with new channel name
         :return: None
         """
+        # initialize some vars
+        self.register = None
+        self.register_prime = None
+        self.query_routing_data = None
+
         # call game controller function to retrieve content
         token = self.scope['url_route']['kwargs']['token']
-        register_content = sync_to_async(controllers.MatchController.initialize_by_token(token,self.channel_name))
+        register_content = await sync_to_async(controllers.MatchController.initialize_by_token)(token,self.channel_name)
 
         # copy register to memory
         self.register = register_content
@@ -69,7 +68,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         match_id = self.register['match_id']
 
         await self.accept()
-        await self.channel_layer.group_add(match_id)
+        await self.channel_layer.group_add(match_id,self.channel_name)
         pass
 
     async def register_update(self,event):
@@ -277,17 +276,22 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         key = message['key']
         if key == "start_game" and self.register['is_prime']:
             # send channel_layer initial turn process request msg to GameProcessor
-            pass
+            message = {
+                "type":"initial.turn",
+                "match_id": self.register['match_id'],
+                "prime_channel_name": self.channel_name
+            }
+            await self.channel_layer.send("GameProcessor",message)
         elif key == "add_bot" and self.register['is_prime']:
             match_id = self.register['match_id']
-            none_value = sync_to_async(controllers.MatchController.add_player_to_match(match_id,prime=False,bot=True))
+            none_value = await sync_to_async(controllers.MatchController.add_player_to_match(match_id,prime=False,bot=True))
         else:
             print(str(self.__doc__)+"prime command ignored key="+key)
         pass
 
     async def prime_send_query_set_request(self):
         """
-        This method sends a mesaage to GameProcessor, instructing it to prepare a query_set and send them over channels
+        This method sends a message to GameProcessor, instructing it to prepare a query_set and send them over channels
         :return:
         """
         if self.register['is_prime']:
@@ -321,7 +325,8 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
     async def disconnect(self, code):
         # Match controller will turn this player into a bot player, if this player is prime, another will be selected
         # then a update message will be sent to the remaining players
-        controllers.MatchController.handle_player_disconnect(self.register)
+        await sync_to_async(controllers.MatchController.handle_player_disconnect)(self.register)
+        await self.channel_layer.group_discard(self.register['match_id'],self.channel_name)
 
     async def receive_json(self, content, **kwargs):
         """

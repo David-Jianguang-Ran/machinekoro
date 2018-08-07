@@ -44,8 +44,9 @@ def main_view(request, token):
     :param token:
     :return:
     """
+    ws_url = "ws://127.0.0.1:8000/ws/consumers/" + token + "/"
     context={
-        "token":token
+        "ws_url":ws_url
     }
     return render(request,'reactEnabled.html',context)
 

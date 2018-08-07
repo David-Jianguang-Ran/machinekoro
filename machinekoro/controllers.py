@@ -13,6 +13,10 @@ from . import models
 from . import game_objects
 
 
+def silly_print(content):
+    print(content)
+
+
 class MatchController:
     """
     This object has methods needed to manage data needed for PlayerConsumer
@@ -57,7 +61,7 @@ class MatchController:
         register_json = json.dumps({})  # is dumping nothing necessary?
 
         # create MatchSession model
-        match_obj = models.MatchSession.objects.create(match_id=match_id_str,register=register_json)
+        match_obj = models.MatchSession.objects.create(match_id=match_id_str,register=register_json,in_progress=False)
         match_obj.save()
         return match_id_str
 
@@ -86,7 +90,7 @@ class MatchController:
             return
         else:
             # create new register entry
-            num = len(match_register) + 1
+            num = int(len(match_register) + 1)
             register_entry = {
                 'match_id': match_id,
                 'player_num': num,
@@ -94,7 +98,7 @@ class MatchController:
                 'is_bot': bot,
                 # should i add a customizable name & portrait here?
         }
-        match_register['num'] = register_entry
+        match_register[num] = register_entry
 
         # saves match register to db
         match_obj.register = json.dumps(match_register)
@@ -126,10 +130,6 @@ class MatchController:
             match_session=match_obj
         )
         register_obj.save()
-
-        # add register to  match obj, registers field
-        match_obj.registers_set.add(register_obj)
-        match_obj.save()
         return token_str
 
     @staticmethod
@@ -146,13 +146,16 @@ class MatchController:
 
         # register look up and modification
         match_id = content['match_id']
-        player_num = content['num']
+        player_num = content['player_num']
         content['self_channel_name'] = channel_name
 
-        # gets MatchSession object and updates this player's prime register entry
-        match_obj = models.MatchSession.objects.get(token_str=match_id)
+        # gets MatchSession object
+        match_obj = models.MatchSession.objects.get(match_id=match_id)
         prime_register = json.loads(match_obj.register)
-        prime_register[player_num] = content
+
+        # remove old entry from add player step then add new register entry that includes self.channel_name
+        prime_register.pop(str(player_num), None)
+        prime_register[int(player_num)] = content
 
         # if this is not the first player(prime player) in a game,
         # send a message in channel_layer to all in group to update new player info
@@ -207,7 +210,7 @@ class MatchController:
 
         # send update to group
         message = {
-            "type": "prime.register.update",
+            "type": "register.update",
             "content": prime_register_json
         }
         channel_layer = get_channel_layer()
