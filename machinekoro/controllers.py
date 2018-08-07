@@ -535,8 +535,8 @@ class GameController:
                 if state.tracker['active_player_num'] > len(state.players):
                     state.tracker['active_player_num'] = 1
 
-        # then saves current state to db
-        self.__save_state_to_db()
+        return state
+
 
     @staticmethod
     def __resolve_activation(state,activation_num):
@@ -713,6 +713,8 @@ class SearchController:
 
     - run_sim
 
+    - respond_to_query_set
+
     - save_simulation_data
 
     - load_simulation_data
@@ -722,8 +724,9 @@ class SearchController:
     - choose_move_states_from_set
 
     """
-    def __init__(self,query_set,match_id,max_moves= 20, max_time= 10, c=1.4):
+    def __init__(self,query_set,num,match_id,max_moves= 20, max_time= 10, c=1.4):
         self.query_set_prime = query_set
+        self.player_num = num
         self.game = GameController(match_id)
         self.c = c
         self.stat_table = {
@@ -742,7 +745,8 @@ class SearchController:
         """
         expansion_stage = True
         root = True
-        query_set = self.query_set_prime
+        # if i don't copy, will self.query_set_prime be modified?
+        query_set = copy.copy(self.query_set_prime)
 
         sim_states = [copy.deepcopy(self.game.current_state)]
         current_state = sim_states[-1]
@@ -763,7 +767,7 @@ class SearchController:
             else:
                 root = False
 
-            move_states = self.get_move_states_from_query_set(query_set)
+            move_states = self.get_move_states_from_query_set(query_set,current_state)
 
             chosen_state = self.choose_move_state_from_set(move_states,stat_table)
 
@@ -793,6 +797,37 @@ class SearchController:
             plays[(player,state)] += 1
             if player == winner_found:
                 wins[(player,state)] += 1
+
+    def respond_to_query_set(self):
+        """
+        This method takes a query_set, runs simulation based on it, and pick move_state and
+        return response_set
+        :return: response_set
+        """
+        # Run sim and record how many games have been played
+        games = 0
+        start_time = int(time.time())
+        while int(time.time()) - start_time < self.max_time:
+            self.run_sim()
+            games += 1
+
+        # get move states for prime query set
+        move_states = self.get_move_states_from_query_set(self.query_set_prime,self.game.current_state)
+
+        # pick move state with the highest percentage of wins
+        most_win = 0
+        selected_move = None
+        for m, s in move_states:
+            this_state = (self.player_num,s)
+            win_ratio = self.stat_table['wins'].get(this_state) / self.stat_table['plays'].get(this_state)
+            if win_ratio > most_win:
+                selected_move = m
+
+        # save sim data to improve search space mapping
+        self.save_simulation_data()
+
+        # return selected_move as it is a valid response set obj
+        return selected_move
 
     def save_simulation_data(self,label="default"):
         """
@@ -824,14 +859,47 @@ class SearchController:
         self.stat_table['plays'] = json.loads(db_obj.plays)
         self.stat_table['wins'] = json.loads(db_obj.wins)
 
-    @staticmethod
-    def get_move_states_from_query_set(query_set):
+    def get_move_states_from_query_set(self,query_set,state):
         """
         This method takes a query set, makes a move state for each possible combination of moves
         :param query_set:
-        :return:
+        :param state: read only, not modified
+        :return: move_states [(move,resulting_state),(...)]
         """
-        move_states = query_set
+        moves = []
+        first_q = True
+        move_states = []
+
+        # generate one move for each possible combination of responses(if multiple)
+        # the moves are valid response_set object that could be used to advance state
+        for some_query in query_set:
+            move_set_calc = []
+            if first_q:
+                first_q = False
+                for option in some_query['options']:
+                    single_move = [{
+                        "q_type": some_query['q_type'],
+                        "choice": option
+                    }]
+                    move_set_calc.append(single_move)
+            else:
+                for single_move in moves:
+                    # add the child nodes of previous list elements
+                    for option in some_query['option']:
+                        new_entry = single_move.append({
+                            "q_type":some_query['q_type'],
+                            "choice":option
+                        })
+                        move_set_calc.append(new_entry)
+            # Saves new list as the list
+            moves = move_set_calc
+
+        # pair moves with the resulting state
+        for move in moves:
+            new_state = copy.deepcopy(state)
+            new_state = self.game.apply_query_response(new_state,move)
+            move_states.append((move,new_state))
+
         return move_states
 
     @staticmethod

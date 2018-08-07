@@ -217,17 +217,17 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
             routing_data.query_set_snippet.append({num: q_type})
 
-            if not query['only_option']:
-                    # append query to outgoing set with the co-responding player num
-                    routing_data.outgoing_query_sets[num].append(query)
-            else:
-                # if query has only one option, add response automatically
+            if query['only_option'] and self.register_prime[num]['is_bot']:
+                # if query has only one option going to a bot, add response automatically
                 query['choice'] = query['options']
                 event = {
                     "dummy_type":"kaka",  # this message isn't sent over channels, its just made to look like it
                     "response":query
                 }
                 await self.process_client_response(event)
+            else:
+                # append query to outgoing set with the co-responding player num
+                routing_data.outgoing_query_sets[num].append(query)
 
         # send all query set channel message to clients
         for num in routing_data.outgoing_query_sets:
