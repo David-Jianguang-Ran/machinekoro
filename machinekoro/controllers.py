@@ -537,7 +537,6 @@ class GameController:
 
         return state
 
-
     @staticmethod
     def __resolve_activation(state,activation_num):
         active_player_num = state.tracker['active_player_num']
@@ -750,7 +749,7 @@ class SearchController:
 
         sim_states = [copy.deepcopy(self.game.current_state)]
         current_state = sim_states[-1]
-        current_player = current_state['tracker']['active_player']
+        current_player_num = current_state['tracker']['active_player'] # this is a int num, not a player obj
         visited_states = []
 
         stat_table = self.stat_table
@@ -769,20 +768,32 @@ class SearchController:
 
             move_states = self.get_move_states_from_query_set(query_set,current_state)
 
-            chosen_state = self.choose_move_state_from_set(move_states,stat_table)
+            child_node_play_stats = [plays.get((current_player_num,state)) for move, state in move_states]
+            if all(child_node_play_stats):
+                # if there is stats for every node, use UCB1 to choose the next node
+                log_total = math.log10(sum(child_node_play_stats))
+
+                ucb_state_list = [ ( ( wins.get(current_player_num,state) / plays.get(current_player_num,state) ) +
+                                    math.sqrt(2*log_total / plays.get(current_player_num,state) ) , state )
+                                    for move, state in move_states]
+
+                chosen_state = max(ucb_state_list)
+            else:
+                # if not randomly choose next node
+                chosen_state = random.choice(move_states)[1]
 
             # if chosen_state is new to stat table move into expansion stage
-            if not expansion_stage and (current_player,chosen_state) not in plays:
+            if not expansion_stage and (current_player_num,chosen_state) not in plays:
                 expansion_stage = True
-                plays[(current_player,chosen_state)] = 0
-                wins[(current_player,chosen_state)] = 0
+                plays[(current_player_num,chosen_state)] = 0
+                wins[(current_player_num,chosen_state)] = 0
                 # record max depth reached for fun
                 if i > self.max_depth_reached:
                     self.max_depth_reached = i
 
             # record the state to lists
             sim_states.append(chosen_state)
-            visited_states.append((current_player,chosen_state))
+            visited_states.append((current_player_num,chosen_state))
 
             # if a winner is found, break out of moving loop
             winner = chosen_state['tracker']['winner']
@@ -879,6 +890,7 @@ class SearchController:
                 for option in some_query['options']:
                     single_move = [{
                         "q_type": some_query['q_type'],
+                        "player_num":some_query['player_num'],
                         "choice": option
                     }]
                     move_set_calc.append(single_move)
@@ -888,6 +900,7 @@ class SearchController:
                     for option in some_query['option']:
                         new_entry = single_move.append({
                             "q_type":some_query['q_type'],
+                            "player_num":some_query['player_num'],
                             "choice":option
                         })
                         move_set_calc.append(new_entry)
@@ -902,15 +915,3 @@ class SearchController:
 
         return move_states
 
-    @staticmethod
-    def choose_move_state_from_set(move_states,stat_table):
-        """
-        This method choose one move state from the set,
-        if possible, this method will use UCB1
-        if not a random choice will be made
-        :param move_states:
-        :param stat_table:
-        :return:
-        """
-        move_state = random.choice(move_states)
-        return move_state

@@ -1,3 +1,4 @@
+from django.contrib import admin
 from django.db import models
 
 
@@ -67,6 +68,12 @@ class TreeSearchData(models.Model):
     label = models.CharField(max_length=20,choices=label_options)
     plays = models.TextField()
     wins = models.TextField()
+
+
+# all models are registered here
+admin.site.register(MatchSession)
+admin.site.register(TokenRegister)
+admin.site.register(TreeSearchData)
 
 
 

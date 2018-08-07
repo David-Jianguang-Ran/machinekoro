@@ -2,7 +2,6 @@ import copy
 import random
 import json
 
-# this file contains the card class which is essential for game ops
 # the info on the game is on http://machi-koro.wikia.com/wiki/Machi_Koro_Wiki
 # hard coded card index, this data is used to initialize a card obj that gets added to the players hand
 # landmark card index is below
@@ -269,7 +268,9 @@ CardDex = {
 
 class GameState:
     """
-    This object is purely a data object, all methods are stored in the GameController object
+    This object is deliberately small since many instances of state will be saved to memory and data
+    all functions that modify this state are stored in the GameController object
+    GameController.current_state = state <- THIS OBJECT
 
     O attributes:
 
@@ -325,6 +326,8 @@ class GameState:
                 }
             self.temp_data = {}
 
+    # something would probably go wrong here check NoteW@73
+    # will the json of this obj still have self.temp_data?
     def __str__(self):
         """
         This method has been overwritten to exclude temp_data in prints and comparisons
@@ -339,7 +342,7 @@ class GameState:
         This method has been overwritten for comparing states
         :return:
         """
-        return self.__dict__ == other.__dict__
+        return self.__str__ == other.__str__
 
 
 class Card:
