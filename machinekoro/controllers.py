@@ -12,9 +12,14 @@ from channels.layers import get_channel_layer
 from . import models
 from . import game_objects
 
+# debug print var, remember to set to false NoteK@88
+DEBUG_PRINT = True
 
-def silly_print(content):
-    print(content)
+
+def silly_print(str,content):
+    if DEBUG_PRINT:
+        print(str)
+        print(content)
 
 
 class MatchController:
@@ -157,6 +162,8 @@ class MatchController:
         prime_register.pop(str(player_num), None)
         prime_register[int(player_num)] = content
 
+        silly_print("prime_register at init by token",prime_register)
+
         # if this is not the first player(prime player) in a game,
         # send a message in channel_layer to all in group to update new player info
         if not content['is_prime']:
@@ -210,7 +217,7 @@ class MatchController:
 
         # send update to group
         message = {
-            "type": "register.update",
+            "type": "prime.register.update",
             "content": prime_register_json
         }
         channel_layer = get_channel_layer()
@@ -644,6 +651,7 @@ class GameController:
         """
         # prepare json from world state
         json_set = self.dump_state_to_json(self.current_state)
+        silly_print("the following state has been saved to db ",json_set)
 
         # save data to db
 

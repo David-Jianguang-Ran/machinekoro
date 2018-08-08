@@ -64,6 +64,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
         # copy register to memory
         self.register = register_content
+        controllers.silly_print("PlayerConsumer init with the following register content",register_content)
 
         match_id = self.register['match_id']
 
@@ -71,7 +72,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(match_id,self.channel_name)
         pass
 
-    async def register_update(self,event):
+    async def prime_register_update(self,event):
         """
         this method receives updates of prime_register obj send from MatchController.add_player_to_match
         if the player is prime, then the prime_register gets saved
@@ -93,28 +94,45 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         }
         await self.send_json(client_massage)
 
-    async def game_state_update(self,event):
+
+#    async def game_state_update(self,event):
+#        """
+#        This method is called by a broadcast message into group from GameProcessor
+#        :param event: looks something like this:
+#            event = {
+#           "type": "game.state.update",
+#            "match_id":self.match_id ,
+#            "content": json_set = {
+#                tracker:
+#                   market :
+#                players :
+#            }
+#        }
+#        channel_laye
+#        :return:
+#        """
+#        event['key'] = "game_state_update"
+#        await self.send_json(json.dumps(event))
+#
+#    async def dice_roll_update(self,event):
+#        event['key'] = "dice_roll_update"
+#        await self.send_json(event)
+
+    async def send_message_to_client(self, event):
         """
-        This method is called by a broadcast message into group from GameProcessor
-        :param event: looks something like this:
-            event = {
-            "type": "game.state.update",
-            "match_id":self.match_id ,
-            "content": json_set = {
-                tracker:
-                market :
-                players :
-            }
-        }
-        channel_laye
+
+        :param event:
         :return:
         """
-        event['key'] = "game_state_update"
-        await self.send_json(json.dumps(event))
+        # loop up vars
 
-    async def dice_roll_update(self,event):
-        event['key'] = "dice_roll_update"
-        await self.send_json(event)
+        message = {
+            "key":event['key'],
+            "body": event['content']
+        }
+
+        controllers.silly_print("ws message sent to client",message)
+        await self.send_json(message)
 
     async def send_query_set_to_client(self, event):
         """
@@ -273,8 +291,9 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         :param message: msg with key "prime.player.command"
         :return:
         """
-        key = message['key']
-        if key == "start_game" and self.register['is_prime']:
+        cmd = message['cmd']
+
+        if cmd == "start_game" and self.register['is_prime']:
             # send channel_layer initial turn process request msg to GameProcessor
             message = {
                 "type":"initial.turn",
@@ -282,11 +301,35 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                 "prime_channel_name": self.channel_name
             }
             await self.channel_layer.send("GameProcessor",message)
-        elif key == "add_bot" and self.register['is_prime']:
+
+        elif cmd == "add_bot" and self.register['is_prime']:
+            # add a bot player to match register,
+            # note the bot player has no consumer actions are handled by prime
             match_id = self.register['match_id']
-            none_value = await sync_to_async(controllers.MatchController.add_player_to_match(match_id,prime=False,bot=True))
+            none_value = await sync_to_async\
+                (controllers.MatchController.add_player_to_match)\
+                (controllers.MatchController(),match_id,prime=False,bot=True)
+            controllers.silly_print("bot player added to game",self.register['match_id'])
+
+        elif cmd == "kick_player" and self.register['is_prime']:
+            # kick player from game and replace them with a bot
+            target_player = message['target']
+            target_register = self.register_prime[target_player]
+
+            controllers.silly_print("kicking player from game, num = ",target_player)
+
+            message = {
+                "type":"send.message.to.client",
+                "key":"alert",
+                "content": "You have been removed from the game and replaced by bot"
+            }
+
+            await sync_to_async(controllers.MatchController.handle_player_disconnect)(target_register)
+            await self.channel_layer.group_discard(self.register['match_id'], target_register['self_channel_name'])
+            await self.channel_layer.send(target_register['self_channel_name'],message)
+
         else:
-            print(str(self.__doc__)+"prime command ignored key="+key)
+            print(str(self.__doc__)+"prime command ignored key="+cmd)
         pass
 
     async def prime_send_query_set_request(self):
@@ -328,15 +371,19 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         await sync_to_async(controllers.MatchController.handle_player_disconnect)(self.register)
         await self.channel_layer.group_discard(self.register['match_id'],self.channel_name)
 
-    async def receive_json(self, content, **kwargs):
+    async def receive_json(self, message, **kwargs):
         """
         This method takes message from ws connection (client) and routes based on type
         :param content:
         :param kwargs:
         :return:
         """
-        # do i need this here?
-        if content['type'] == 'prime.player.command':
+        # debug print incoming message from client
+        controllers.silly_print("incoming ws message from client",message)
+        content = json.loads(message['content'])
+
+        # look up key and route message
+        if content["key"] == "prime_player_command":
             await self.prime_player_command(content)
         pass
 
@@ -381,6 +428,8 @@ class GameProcessorConsumer(SyncConsumer):
         }
         :return: sends query message to player prime
         """
+        controllers.silly_print("message received by Game Processor",event)
+
         match_id = event['match_id']
         prime_channel_name = event['prime_channel_name']
         game_controller = controllers.GameController(match_id=match_id)
@@ -394,7 +443,8 @@ class GameProcessorConsumer(SyncConsumer):
             "query_set": query_set
         }
 
-        async_to_sync(self.channel_layer.send(prime_channel_name, message))
+        async_to_sync(self.channel_layer.send)(prime_channel_name, message)
+        controllers.silly_print("message sent by Game Processor",message)
 
     def get_query_set(self,event):
         """
@@ -420,7 +470,8 @@ class GameProcessorConsumer(SyncConsumer):
             "query_set":query_set
         }
 
-        async_to_sync(self.channel_layer.send(prime_channel_name, message))
+        async_to_sync(self.channel_layer.send)(prime_channel_name, message)
+        controllers.silly_print("message sent by Game Processor",message)
 
     def process_response(self,event):
         """
@@ -449,6 +500,7 @@ class GameProcessorConsumer(SyncConsumer):
             "content":content
         }
         async_to_sync(self.channel_layer.send)(match_id,update)
+        controllers.silly_print("message sent by Game Processor",update)
 
         # send message to prime to signal process complete
         message = {
@@ -456,6 +508,7 @@ class GameProcessorConsumer(SyncConsumer):
             "match_id": match_id
         }
         async_to_sync(self.channel_layer.send)(prime_channel_name, message)
+        controllers.silly_print("message sent by Game Processor", message)
 
 
 class BotProcessorConsumer(SyncConsumer):
@@ -474,6 +527,10 @@ class BotProcessorConsumer(SyncConsumer):
         :param event:
         :return:
         """
+        # debug print
+        controllers.silly_print("message received by Bot Processor",event)
+
+        # var look up
         query_set = event['query_set']
         player_num = event['player_num']
         match_id = event['match_id']
@@ -494,5 +551,6 @@ class BotProcessorConsumer(SyncConsumer):
             "response_set":response_set
         }
 
-        async_to_sync(self.channel_layer.send(prime_channel_name,message))
+        async_to_sync(self.channel_layer.send)(prime_channel_name, message)
+        controllers.silly_print("message sent by Bot Processor",message)
 

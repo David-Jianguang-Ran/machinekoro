@@ -8,7 +8,9 @@ class WebSocketManager {
     constructor(url) {
         this.outstandingMessage = false
         this.messageRoutingTable = {
-            "messageKey":"messageHandler"
+            "messageKey":"messageHandler",
+            "alert":console.log,
+            "register_update":console.log
         }
         this.sendJSON = this.sendJSON.bind(this)
         this.messageSwitcher = this.messageSwitcher.bind(this)
