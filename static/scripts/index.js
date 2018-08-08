@@ -6,7 +6,7 @@ import WebSocketManager from "./dataManager"
 import TestApp from "./testApp"
 
 // this is the entry point of the app
-const reactContainer = document.getElementById("reactContainer");
+const reactContainer = document.getElementById("react_container");
 
 // initialize a ws manager and pass to top level object
 // url will be inserted by template engine in html

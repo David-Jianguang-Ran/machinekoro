@@ -3,13 +3,18 @@
 {%  load render_bundle from webpack_loader %}
 
 {% block content %}
-    <div id="react_container">
-        <h1>this is not react</h1>
+
+    <div>
+        <div id="react_container">
+            <h1>this is not react</h1>
+        </div>
+        <script>
+            // insert url by concat default with room serial
+            url = "{{ ws_url }}"
+        </script>
     </div>
-    <script>
-        // insert url by concat default with room serial
-        url = "{{ ws_url }}"
-    </script>
+
+
     {% render_bundle 'main' %}
 
 {% endblock %}

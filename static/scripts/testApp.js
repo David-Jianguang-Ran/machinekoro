@@ -14,7 +14,7 @@ const TextField = function (props) {
 
     )}
 
-class TestApp extends React.Component{
+export class TestApp extends React.Component{
     constructor(props){
         super(props)
         this.messageList = ["initial line"]
