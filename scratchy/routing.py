@@ -11,8 +11,8 @@ application = ProtocolTypeRouter({
         ])
     ),
     "channel": ChannelNameRouter({
-        'GameProcessor' : consumers.GameProcessorConsumer,
-        'BotProcessor' : consumers.BotProcessorConsumer
+        'game_processor' : consumers.GameProcessorConsumer,
+        'bot_processor' : consumers.BotProcessorConsumer
     })
 })
 

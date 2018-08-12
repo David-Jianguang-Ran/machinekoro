@@ -285,8 +285,8 @@ class GameController:
                 "player_num" : active_player_num,
                 "q_type":"dice_query_a"
             }
-            if active_player.landmark['Train Station'] == 1:
-                if active_player.landmark['Moon Tower'] == 1:
+            if active_player['landmark']['Train Station'] == 1:
+                if active_player['landmark']['Moon Tower'] == 1:
                     query['options'] = [1,2,3]
                 else:
                     query['options'] = [1,2]
@@ -315,7 +315,7 @@ class GameController:
             activation = state.temp_data['activation']
 
             # returns a query asking whether to apply harbour (activation + 2)
-            if active_player.landmark['Harbor'] == 1 and activation >= 10:
+            if active_player['landmark']['Harbor'] == 1 and activation >= 10:
                 query = {
                     "key": "action.query",
                     "player_num": active_player_num,
@@ -357,7 +357,7 @@ class GameController:
                     options.append(some_card)
 
             # if player has airpot, add another option
-            if active_player.landmark['Airport']:
+            if active_player['landmark']['Airport']:
                 options.append('Activate Airport')
 
             query_list = [{
@@ -472,7 +472,7 @@ class GameController:
                 for response in response_set:
                     if response['q_type'] == 'card_query_demo':
                         choice = response['choices']
-                        active_player.landmark[choice] = 0
+                        active_player['landmark'][choice] = 0
                         active_player.coin += 8
                     elif response['q_type'] == 'card_query_move':
                         card_choice = response['choices'][0]
@@ -513,7 +513,7 @@ class GameController:
                     elif card_choice in ["City Hall","Harbour","Train Station",
                                          "Shopping Mall","Amusement Park",
                                          "Moon Tower","Airport"]:
-                        active_player.landmark[card_choice] = 1
+                        active_player['landmark'][card_choice] = 1
                     else:
                         self.__buy_card_from_market(state,active_player,card_choice)
 
@@ -654,15 +654,14 @@ class GameController:
         silly_print("the following state has been saved to db ",json_set)
 
         # save data to db
+        match = models.MatchSession.objects.get(match_id=self.match_id)
 
-        match = models.MatchSession.objects.filter(match_id=self.match_id)
-        match.update(
-            in_progress=True,
-            tracker=json_set['tracker'],
-            market=json_set['market'],
-            player_list=json_set['players'],
-            temp_data=json_set['temp_data']
-            )
+        match.in_progress = True
+        match.tracker = json_set['tracker']
+        match.market = json_set['market']
+        match.player_list = json_set['players']
+        match.temp_data = json_set['temp_data']
+
         match.save()
 
     @staticmethod

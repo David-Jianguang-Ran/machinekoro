@@ -259,7 +259,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                     "player_num":num,
                     "query_set":routing_data.outgoing_query_sets[num]
                 }
-                await self.channel_layer.send("BotProcessor",message)
+                await self.channel_layer.send("bot_processor",message)
             else:
                 # send to consumer and to client
                 # can i just send to self with channel_name? i guess yes, we'll see
@@ -300,7 +300,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                 "match_id": self.register['match_id'],
                 "prime_channel_name": self.channel_name
             }
-            await self.channel_layer.send("GameProcessor",message)
+            await self.channel_layer.send("game_processor",message)
 
         elif cmd == "add_bot" and self.register['is_prime']:
             # add a bot player to match register,
@@ -343,7 +343,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                 "prime_channel_name" : self.channel_name,
                 "match_id" : self.register['match_id']
             }
-            await self.channel_layer.send("GamProcessor",message)
+            await self.channel_layer.send("game_processor",message)
         else:
             print("prime Player methods can only be called by prime player")
 
@@ -361,7 +361,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                 "match_id" : self.register['match_id'],
                 "response_set" : response_set
             }
-            await self.channel_layer.send("GamProcessor",message)
+            await self.channel_layer.send("game_processor",message)
         else:
             print("prime Player methods can only be called by prime player")
 
@@ -435,7 +435,7 @@ class GameProcessorConsumer(SyncConsumer):
         game_controller = controllers.GameController(match_id=match_id)
 
         game_controller.initialize_state()
-        query_set = game_controller.get_query_set()
+        query_set = game_controller.get_query_set(game_controller.current_state)
 
         message = {
             "type": "process_query_set",
