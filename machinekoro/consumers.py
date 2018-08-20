@@ -158,19 +158,30 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         """
         if self.register['is_prime']:
             store = self.query_routing_data
-            # add response to self.response_set
+
             response = event['response']
-            store.response_set.append(response)
 
-            # compute response_snippet
-            response_set_snippet = []
-            for each_response in store.response_set:
-                num = each_response['player_num']
-                q_type = each_response['q_type']
-                response_set_snippet.append({num: q_type})
+            # check if response is valid
+            for some_entry in store.response_set_snippet:
+                if some_entry['out_standing'] \
+                        and some_entry['q_type'] == response['q_type'] \
+                        and response['choice'] in some_entry['options']:
+                    # add response to self.response_set
+                    store.response_set.append(response)
 
-            if response_set_snippet == store.query_set_snippet:
+                    # modify snippet to reflect that newest query has been received
+                    some_entry['out_standing'] = False
+                    print("valid response recived")
+                    break
+
+            # check if all responses are in set has_client_query_outstanding flag accordingly
+            all_in = True
+            for some_entry in store.response_set_snippet:
+                if some_entry['out_standing']:
+                    all_in = False
                 store.has_client_query_outstanding = False
+
+            store.has_client_query_outstanding = not all_in
 
         else:
             # look up prime channel name
@@ -231,20 +242,24 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
             num = query['player_num']
             q_type = query['q_type']
+            options = query['options']
 
-            routing_data.query_set_snippet.append({num: q_type})
+            # add snippet to table
+            routing_data.query_set_snippet.append({
+                "num":num,
+                "q_type":q_type,
+                'options':options,
+                'out_standing':True
+            })
 
             if query['only_option'] and self.register_prime[num]['is_bot']:
                 # if query has only one option going to a bot, add response automatically
                 query['choice'] = query['options']
                 event = {
-                    "dummy_type":"kaka",  # this message isn't sent over channels, its just made to look like it
-                    "response":query
+                    "dummy_type": "kaka",  # this message isn't sent over channels, its just made to look like it
+                    "response": query
                 }
                 await self.process_client_response(event)
-            else:
-                # append query to outgoing set with the co-responding player num
-                routing_data.outgoing_query_sets[num].append(query)
 
         # send all query set channel message to clients
         for num in routing_data.outgoing_query_sets:
@@ -438,7 +453,7 @@ class GameProcessorConsumer(SyncConsumer):
         query_set = game_controller.get_query_set(game_controller.current_state)
 
         message = {
-            "type": "process_query_set",
+            "type": "prime.process.query.set",
             "match_id": match_id,
             "query_set": query_set
         }
@@ -465,9 +480,9 @@ class GameProcessorConsumer(SyncConsumer):
         query_set = game_controller.get_query_set(game_controller.current_state)
 
         message = {
-            "type":"process_query_set",
+            "type": "prime.process.query.set",
             "match_id": match_id,
-            "query_set":query_set
+            "query_set": query_set
         }
 
         async_to_sync(self.channel_layer.send)(prime_channel_name, message)
