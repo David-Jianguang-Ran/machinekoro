@@ -106,6 +106,10 @@ class MatchController:
         match_register = json.loads(match_obj.register)
 
         if match_obj.in_progress:
+            # bail out of match already in progress
+            return
+        elif len(match_register) > 5:
+            # bail of game is full
             return
         else:
             # create new register entry
@@ -270,7 +274,7 @@ class GameController:
         match_session = models.MatchSession.objects.get(match_id=self.match_id)
         prime_register = json.loads(match_session.register)
 
-        if not prime_register['in_progress']:
+        if not match_session.in_progress:
             self.current_state = game_objects.GameState(len(prime_register))
             self.__save_state_to_db()
         else:
