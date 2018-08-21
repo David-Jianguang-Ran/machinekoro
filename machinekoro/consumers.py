@@ -56,7 +56,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         # initialize some vars
         self.register = None
         self.register_prime = None
-        self.query_routing_data = None
+        self.query_routing_data = controllers.RoutingData()
 
         # call game controller function to retrieve content
         token = self.scope['url_route']['kwargs']['token']
@@ -252,14 +252,14 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                 'out_standing':True
             })
 
-            if query['only_option'] and self.register_prime[num]['is_bot']:
-                # if query has only one option going to a bot, add response automatically
-                query['choice'] = query['options']
-                event = {
-                    "dummy_type": "kaka",  # this message isn't sent over channels, its just made to look like it
-                    "response": query
-                }
-                await self.process_client_response(event)
+#            if query['only_option'] and self.register_prime[num]['is_bot']:
+#                # if query has only one option going to a bot, add response automatically
+#                query['choice'] = query['options']
+#                event = {
+#                    "dummy_type": "kaka",  # this message isn't sent over channels, its just made to look like it
+#                    "response": query
+#                }
+#                await self.process_client_response(event)
 
         # send all query set channel message to clients
         for num in routing_data.outgoing_query_sets:

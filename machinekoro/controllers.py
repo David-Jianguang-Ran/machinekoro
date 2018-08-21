@@ -1,3 +1,7 @@
+"""
+This module contains the controller objects used by views and consumers to change game states and make bot decisions
+This module also has data objects used by consumers
+"""
 import copy
 import collections
 import json
@@ -16,12 +20,22 @@ from . import game_objects
 DEBUG_PRINT = True
 
 
-def silly_print(str,content):
+def silly_print(some_str,content):
     if DEBUG_PRINT:
-        print(str)
+        print(some_str)
         print(content)
 
 
+# data objects below
+class RoutingData:
+    def __init__(self):
+        self.outgoing_query_sets = {}
+        self.query_set_snippet = []
+        self.has_client_query_outstanding = False
+        self.response_set = []
+
+
+# controllers below
 class MatchController:
     """
     This object has methods needed to manage data needed for PlayerConsumer
@@ -256,9 +270,11 @@ class GameController:
         match_session = models.MatchSession.objects.get(match_id=self.match_id)
         prime_register = json.loads(match_session.register)
 
-        self.current_state = game_objects.GameState(len(prime_register))
-
-        self.__save_state_to_db()
+        if not prime_register['in_progress']:
+            self.current_state = game_objects.GameState(len(prime_register))
+            self.__save_state_to_db()
+        else:
+            silly_print("Duplicate initialize state cmd received")
 
     @staticmethod
     def get_query_set(state):
