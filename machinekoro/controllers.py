@@ -118,15 +118,23 @@ class MatchController:
             return
         else:
             # create new register entry
-            num = int(len(match_register) + 1)
+            num_str = str(len(match_register))
             register_entry = {
                 'match_id': match_id,
-                'player_num': num,
+                'player_num': num_str,
                 'is_prime': prime,
                 'is_bot': bot,
                 # should i add a customizable name & portrait here?
         }
-        match_register[num] = register_entry
+        match_register[num_str] = register_entry
+
+        # broad cast new register into room
+        message = {
+            "type": "prime.register.update",
+            "content": match_register
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(match_id, message)
 
         # saves match register to db
         match_obj.register = json.dumps(match_register)

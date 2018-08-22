@@ -278,7 +278,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                 'type': "send.query.set.to.client",
                 'query_set': query_set
             }
-            await self.channel_layer.send(player_register_data['channel_name'], message)
+            await self.channel_layer.send(player_register_data['self_channel_name'], message)
 
             # block until all response are in
             await self.__block_until_false(routing_data.has_client_query_outstanding)
