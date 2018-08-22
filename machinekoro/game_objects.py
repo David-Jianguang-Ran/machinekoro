@@ -300,12 +300,14 @@ class GameState:
     """
     def __init__(self,player_count=None,json_set=None):
         if json_set:
-            for some_type in ['tracker','market','players','temp_data']:
-                self.some_type = json.loads(json_set[some_type])
+            self.tracker = json.loads(json_set['tracker'])
+            self.market = json.loads(json_set['market'])
+            self.players = json.loads(json_set['players'])
+            self.temp_data = json.loads(json_set['temp_data'])
 
         elif player_count:
             self.tracker = {
-                'active_player_num': 1,
+                'active_player_num': 0,
                 'phase': 'pre_roll',
                 'winner': None
             }
@@ -316,9 +318,9 @@ class GameState:
                 'purple': {}
             }
             self.players = {}
-            for i in range(1,player_count):
-                self.players[i] = {
-                    'num': i,
+            for i in range(0,player_count):
+                self.players[str(i)] = {
+                    'num_str': str(i),
                     'coin': 3,
                     'landmark': LandMarks,
                     'hand': ['Wheat Field','Bakery'],

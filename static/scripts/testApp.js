@@ -29,6 +29,7 @@ export class TestApp extends React.Component{
     componentDidMount(){
         // and event listener for incoming message over ws connection
         this.props.wsManager.addMessageListener('default',this.receiveMessage)
+        this.props.wsManager.addMessageListener('action.query',this.receiveMessage)
     }
     addToMsgList(msg,local=true){
         let entry = null

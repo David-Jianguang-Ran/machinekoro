@@ -23,7 +23,7 @@ DEBUG_PRINT = True
 def silly_print(some_str,content):
     if DEBUG_PRINT:
         print(some_str)
-        print(content)
+        print(str(content))
 
 
 # data objects below
@@ -33,6 +33,10 @@ class RoutingData:
         self.query_set_snippet = []
         self.has_client_query_outstanding = False
         self.response_set = []
+
+    def __str__(self):
+        return (str(self.outgoing_query_sets) + str(self.query_set_snippet) +
+                str(self.has_client_query_outstanding) + str(self.response_set))
 
 
 # controllers below
@@ -110,6 +114,7 @@ class MatchController:
             return
         elif len(match_register) > 5:
             # bail of game is full
+            silly_print("unable to add player, maximum allowed is,", "5")
             return
         else:
             # create new register entry
@@ -169,7 +174,8 @@ class MatchController:
 
         # register look up and modification
         match_id = content['match_id']
-        player_num = content['player_num']
+        player_num = str(content['player_num'])
+        #     player num is string here (key of  prime register and player list are both strings)
         content['self_channel_name'] = channel_name
 
         # gets MatchSession object
@@ -177,8 +183,8 @@ class MatchController:
         prime_register = json.loads(match_obj.register)
 
         # remove old entry from add player step then add new register entry that includes self.channel_name
-        prime_register.pop(str(player_num), None)
-        prime_register[int(player_num)] = content
+        prime_register.pop(player_num, None)
+        prime_register[player_num] = content
 
         silly_print("prime_register at init by token",prime_register)
 
@@ -258,10 +264,11 @@ class GameController:
     def __init__(self,match_id):
         self.match_id = match_id
 
+        silly_print("looking up matchSession by id",match_id)
         match_session = models.MatchSession.objects.get(match_id=match_id)
 
         if match_session.in_progress:
-            self.__load_state_from_db(match_session)
+            self.__load_state_from_db(match_id)
         else:
             self.current_state = None
 
@@ -278,7 +285,7 @@ class GameController:
             self.current_state = game_objects.GameState(len(prime_register))
             self.__save_state_to_db()
         else:
-            silly_print("Duplicate initialize state cmd received")
+            silly_print("Duplicate initialize state cmd received",self.match_id)
 
     @staticmethod
     def get_query_set(state):
@@ -289,9 +296,12 @@ class GameController:
         :param state:
         :return:
         """
+        silly_print("getting query set for the following state",state)
+
         phase = state.tracker['phase']
-        active_player_num = state.tracker['active_player_num']
-        active_player = state.players[active_player_num]
+        active_player_num = str(state.tracker['active_player_num'])
+        # active player num is actually a string type because of json type coercions of "some_int" as string
+        active_player = state.players.get(active_player_num)
 
         # bool flag for taking double turn
         take_duce = False
@@ -422,7 +432,7 @@ class GameController:
         :return:
         """
         phase = state.tracker['phase']
-        active_player_num = state.tracker['active_player_num']
+        active_player_num = str(state.tracker['active_player_num'])
         active_player = state.players[active_player_num]
         take_duce = False
 
@@ -562,8 +572,7 @@ class GameController:
                 state.temp_data['duces'] = False
             else:
                 state.tracker['active_player_num'] += 1
-                if state.tracker['active_player_num'] > len(state.players):
-                    state.tracker['active_player_num'] = 1
+                state.tracker['active_player_num'] = state.tracker['active_player_num'] % len(state.players)
 
         return state
 

@@ -94,7 +94,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         }
         await self.send_json(client_massage)
 
-
+# the method below has been removed, game state updates are now routed through message to client
 #    async def game_state_update(self,event):
 #        """
 #        This method is called by a broadcast message into group from GameProcessor
@@ -145,8 +145,12 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         if not type(query_set) == 'list':
             query_set = [query_set]
 
-        query_json = json.dumps(query_set)
-        await self.send_json(query_json)
+        # send message to client
+        client_message = {
+            "key":"action_query",
+            "query_set":query_set
+        }
+        await self.send_json(client_message)
 
     async def process_client_response(self, event):
         """
@@ -206,95 +210,181 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         """
         await self.prime_send_query_set_request()
 
-    async def prime_process_query_set(self,event):
+    async def prime_process_query_set(self, event):
         """
         This method is called by a GameProcessor message with the key process.query.set (sent by get_query_set)
-        This method:
-            - takes the query set
-            - computes query_set_snippet
-            - looks up prime_register and sends query to players
-            - block until complete
-            - send response set to GameProcessor
+            This method:
+                - takes the query set
+                - computes query_set_snippet
+                - looks up prime_register and sends query the player
+                - block until complete
+                - send response set to GameProcessor
         :param event: looks something like this:
-            message = {
-            "type":"process_query_set",
-            "match_id": match_id,
-            "query_set":query_set
-        }
-            query = {
-        'key': "action.query",
-        "player_num": 'player.num',
-        "q_type": "invest_query",
-        "options": [True, False],
-        "only_option":'bool'
-        }
+                message = {
+                "type":"process_query_set",
+                "match_id": match_id,
+                "query_set":query_set
+            }
+                query = {
+            'key': "action.query",
+            "player_num": 'player.num',
+            "q_type": "invest_query",
+            "options": [True, False],
+            "only_option":'bool'
+            }
         :return:
         """
+        # var look up and init
         query_set = event['query_set']
+        receiver_num = None  # num will be filled in later by query
         routing_data = self.query_routing_data
-        routing_data.outgoing_query_sets = {}
         routing_data.query_set_snippet = []
         routing_data.has_client_query_outstanding = True
         routing_data.response_set = []
 
         # process each query in to query set to client
         for query in query_set:
-
             num = query['player_num']
             q_type = query['q_type']
             options = query['options']
 
+            receiver_num = num
+
             # add snippet to table
             routing_data.query_set_snippet.append({
-                "num":num,
-                "q_type":q_type,
-                'options':options,
-                'out_standing':True
+                "num": num,
+                "q_type": q_type,
+                'options': options,
+                'out_standing': True
             })
 
-#            if query['only_option'] and self.register_prime[num]['is_bot']:
-#                # if query has only one option going to a bot, add response automatically
-#                query['choice'] = query['options']
-#                event = {
-#                    "dummy_type": "kaka",  # this message isn't sent over channels, its just made to look like it
-#                    "response": query
-#                }
-#                await self.process_client_response(event)
+        # send message to client or bot consumer
+        player_register_data = self.register_prime[receiver_num]
 
-        # send all query set channel message to clients
-        for num in routing_data.outgoing_query_sets:
-            player_register_data = self.register_prime[num]
+        if player_register_data['is_bot']:
+            # if player is bot, send processing request to botprocessor
+            message = {
+                "type": "respond.query",
+                "prime_channel_name": self.channel_name,
+                "match_id": player_register_data['match_id'],
+                "player_num": receiver_num,
+                "query_set": query_set
+            }
+            await self.channel_layer.send("bot_processor", message)
+        else:
+            # send to consumer and to client
+            # can i just send to self with channel_name? i guess yes, we'll see
+            message = {
+                'type': "send.query.set.to.client",
+                'query_set': query_set
+            }
+            await self.channel_layer.send(player_register_data['channel_name'], message)
 
-            if player_register_data['is_bot']:
-                # if player is bot, send processing request to botprocessor
-                message = {
-                    "type":"respond.query",
-                    "prime_channel_name":self.channel_name,
-                    "match_id":player_register_data['match_id'],
-                    "player_num":num,
-                    "query_set":routing_data.outgoing_query_sets[num]
-                }
-                await self.channel_layer.send("bot_processor",message)
-            else:
-                # send to consumer and to client
-                # can i just send to self with channel_name? i guess yes, we'll see
-                message = {
-                    'type':"send.query.set.to.client",
-                    'query_set': routing_data.outgoing_query_sets[num]
-                }
-                await self.channel_layer.send(player_register_data['channel_name'], message)
+            # block until all response are in
+            await self.__block_until_false(routing_data.has_client_query_outstanding)
 
-        # block until all response are in
-        await self.__block_until_false(routing_data.has_client_query_outstanding)
+            # make response message to game processor
+            message = {
+                "type": "process.response",
+                "prime_channel_name": self.channel_name,
+                "match_id": self.register['match_id'],
+                "response_set": routing_data.response_set
+            }
+            await self.channel_layer.send("GamProcessor", message)
 
-        # make response message to game processor
-        message = {
-            "type": "process.response",
-            "prime_channel_name": self.channel_name,
-            "match_id": self.register['match_id'],
-            "response_set":routing_data.response_set
-        }
-        await self.channel_layer.send("GamProcessor", message)
+    # async def prime_process_query_set(self,event):
+    #     """
+    #     This method is called by a GameProcessor message with the key process.query.set (sent by get_query_set)
+    #     This method:
+    #         - takes the query set
+    #         - computes query_set_snippet
+    #         - looks up prime_register and sends query to players
+    #         - block until complete
+    #         - send response set to GameProcessor
+    #     :param event: looks something like this:
+    #         message = {
+    #         "type":"process_query_set",
+    #         "match_id": match_id,
+    #         "query_set":query_set
+    #     }
+    #         query = {
+    #     'key': "action.query",
+    #     "player_num": 'player.num',
+    #     "q_type": "invest_query",
+    #     "options": [True, False],
+    #     "only_option":'bool'
+    #     }
+    #     :return:
+    #     """
+    #     controllers.silly_print("Q set received from game processor",event)
+    #
+    #     # init routing data
+    #     query_set = event['query_set']
+    #     routing_data = self.query_routing_data
+    #     routing_data.outgoing_query_sets = {}
+    #     routing_data.query_set_snippet = []
+    #     routing_data.has_client_query_outstanding = True
+    #     routing_data.response_set = []
+    #
+    #     # process each query in to query set to client
+    #     for query in query_set:
+    #
+    #         num = str(query['player_num'])
+    #         q_type = query['q_type']
+    #         options = query['options']
+    #
+    #         # add snippet to table
+    #         routing_data.query_set_snippet.append({
+    #             "num":num,
+    #             "q_type":q_type,
+    #             'options':options,
+    #             'out_standing':True
+    #         })
+    #
+    #         controllers.silly_print("dumping all routing data below",routing_data)
+    #
+    #         print(type(routing_data.outgoing_query_sets[num]))
+    #
+    #         # append query to outgoing sets
+    #         if type(routing_data.outgoing_query_sets[num]) == 'list':
+    #             routing_data.outgoing_query_sets[num].append(query)
+    #         elif not routing_data.outgoing_query_sets[num]:
+    #             routing_data.outgoing_query_sets[num] = [query]
+    #
+    #     # send all query set channel message to clients
+    #     for num in routing_data.outgoing_query_sets:
+    #         player_register_data = self.register_prime[num]
+    #
+    #         if player_register_data['is_bot']:
+    #             # if player is bot, send processing request to botprocessor
+    #             message = {
+    #                 "type":"respond.query",
+    #                 "prime_channel_name":self.channel_name,
+    #                 "match_id":player_register_data['match_id'],
+    #                 "player_num":num,
+    #                 "query_set":routing_data.outgoing_query_sets[num]
+    #             }
+    #             await self.channel_layer.send("bot_processor",message)
+    #         else:
+    #             # send to consumer and to client
+    #             # can i just send to self with channel_name? i guess yes, we'll see
+    #             message = {
+    #                 'type':"send.query.set.to.client",
+    #                 'query_set': routing_data.outgoing_query_sets[num]
+    #             }
+    #             await self.channel_layer.send(player_register_data['channel_name'], message)
+    #
+    #     # block until all response are in
+    #     await self.__block_until_false(routing_data.has_client_query_outstanding)
+    #
+    #     # make response message to game processor
+    #     message = {
+    #         "type": "process.response",
+    #         "prime_channel_name": self.channel_name,
+    #         "match_id": self.register['match_id'],
+    #         "response_set":routing_data.response_set
+    #     }
+    #     await self.channel_layer.send("GamProcessor", message)
 
     async def prime_player_command(self, message):
         """
@@ -324,7 +414,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             none_value = await sync_to_async\
                 (controllers.MatchController.add_player_to_match)\
                 (controllers.MatchController(),match_id,prime=False,bot=True)
-            controllers.silly_print("bot player added to game",self.register['match_id'])
+            controllers.silly_print("bot player requested in game",self.register['match_id'])
 
         elif cmd == "kick_player" and self.register['is_prime']:
             # kick player from game and replace them with a bot
@@ -511,7 +601,8 @@ class GameProcessorConsumer(SyncConsumer):
         # send update message to all in game group
         content = game_controller.dump_state_to_json(game_controller.current_state)
         update = {
-            "type":"world.update",
+            "type":"send.message.to.client",
+            "key":"world_update",
             "content":content
         }
         async_to_sync(self.channel_layer.send)(match_id,update)

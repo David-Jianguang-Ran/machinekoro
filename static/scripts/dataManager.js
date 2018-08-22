@@ -34,7 +34,7 @@ class WebSocketManager {
             }
         }
         console.log("ws received with key" + obj.key)
-        console.log(event)
+        console.log(event.data)
     }
     addMessageListener(key, method) {
         this.messageRoutingTable[key] = method
