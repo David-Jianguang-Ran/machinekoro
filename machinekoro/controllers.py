@@ -302,7 +302,7 @@ class GameController:
         # pre_roll > post_roll > pre_activation > post_activation > post_card_play > Pre_roll
 
         :param state:
-        :return:
+        :return: [query]
         """
         silly_print("getting query set for the following state",state)
 

@@ -68,8 +68,17 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
         match_id = self.register['match_id']
 
+        # init message to client with self.register
+        message = {
+            "key":"init_message",
+            "content":self.register
+        }
+
+        # wait for successful connection
         await self.accept()
-        await self.channel_layer.group_add(match_id,self.channel_name)
+        # send init message / add consumer to match session  (channel layer group)
+        self.send_json(message)
+        self.channel_layer.group_add(match_id,self.channel_name)
         pass
 
     async def prime_register_update(self,event):
@@ -89,7 +98,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         # forward update to client with the appropriate key
         # note that all clients would keep the prime_register for match player data to name or whatever (.......)
         client_massage = {
-            "key": "register_update",
+            "key": "match_update",
             "content": content
         }
         await self.send_json(client_massage)
@@ -602,7 +611,7 @@ class GameProcessorConsumer(SyncConsumer):
         content = game_controller.dump_state_to_json(game_controller.current_state)
         update = {
             "type":"send.message.to.client",
-            "key":"world_update",
+            "key":"game_update",
             "content":content
         }
         async_to_sync(self.channel_layer.send)(match_id,update)

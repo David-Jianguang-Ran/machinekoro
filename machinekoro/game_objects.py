@@ -376,8 +376,14 @@ class Card:
             giver.coin = 0
 
     def activate(self, state, active_player, current_player=None):
+        """
         # this method as all the actions of all regular cards
         # when it is called it will look up the name of the card calling and modify the world appropriately
+        :param state: the state to be modified
+        :param active_player:
+        :param current_player: if there is no current player , that means it is activating the prime player's hand
+        :return:
+        """
         if self.name in ['Wheat Field','Ranch','Flower Orchard','Forrest']:
             active_player.coin += 1
 

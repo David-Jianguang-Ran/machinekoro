@@ -5,52 +5,77 @@ import Main from './main'
 import LoadingDoodad from "./loadingDoodad"
 
 class MKApp extends React.Component {
+    /*
+    This is the top level component
+
+    * Children:
+    (only one should be rendered at a time)
+    -LoadingDoodad
+    -Lobby
+        props: ws_manager match_state
+    -Main
+        props: ws_manager match_state game_state
+
+    * States:
+
+
+    * Props:
+    - ws_manager
+
+
+
+    */
     constructor(props){
         super(props)
         this.state = {
-            "game_phase" : this.props.dataManager.storage['game_phase']
-        }
-        this.component_roster = {
-            "loading" : (
-                <LoadingDoodad/>
-            ),
-            "lobby" : (
-                <Lobby/>
-            ),
-            "main" : (
-                <Main/>
-            )
+            "match_state" : null,
+            "game_state" : null
         }
         this.componentDidMount = this.componentDidMount.bind(this)
-        this.handleRegisterUpdate = this.handleRegisterUpdate.bind(this)
+        this.handleMatchUpdate = this.handleMatchUpdate.bind(this)
+        this.handleGameStateUpdate = this.handleGameStateUpdate.bind(this)
     }
     componentDidMount(){
         // and event listener for incoming message over ws connection
-        this.props.wsManager.addMessageListener(
-            "register_update",this.handleRegisterUpdate())
-        this.props.wsManager.addMessageListener(
-            "world_update",this.handleWorldStateUpdate())
+        this.props.ws_manager.addMessageListener(
+            "match_update",this.handleMatchUpdate())
+        this.props.ws_manager.addMessageListener(
+            "game_update",this.handleGameStateUpdate())
     }
-    handleRegisterUpdate(obj){
-        // copy match register obj to data storage
-        this.props.dataManager.writeToStorage("match_register",obj)
-        // set game phase to lobby if it was loading
-        if (this.props.dataManager.storage['game_phase'] != "loading"){
-            this.props.dataManager.writeToStorage("game_phase","lobby")
+    handleMatchUpdate(obj){
+        // update match state with new match register
+        let new_state = {}
+        for ( let key in this.state ){
+            new_state.key = this.state.key
         }
-    }
-    handleWorldStateUpdate(obj){
-        // copy match register obj to data storage set game phase to
-        this.props.dataManager.writeToStorage("state",obj)
-        if (this.props.dataManager.storage['game_phase'] != "main"){
-            this.props.dataManager.writeToStorage("game_phase","main")
-        }
+        new_state.match_state = obj.content
+
+        this.setState({new_state})
 
     }
+    handleGameStateUpdate(obj){
+        // update game state with new match register
+        let new_state = {}
+        for ( let key in this.state ){
+            new_state.key = this.state.key
+        }
+        new_state.game_state = obj.content
 
+        this.setState({new_state})
+
+    }
     render(){
-        return this.component_roster[this.state["game_phase"]]
+        if (this.state.match_state == null){
+            return (<LoadingDoodad/>)
+        } else if (this.state.game_state == null) {
+            return (<Lobby ws_manager={this.props.ws_manager}
+                           match_state={this.state.match_state}/>)
+        } else {
+            return (<Main ws_manager={this.props.ws_manager}
+                          match_state={this.state.match_state}
+                          game_state={this.state.game_state}/>)
+        }
     }
 }
 
-export default App
+export default MKApp
