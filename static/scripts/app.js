@@ -17,7 +17,8 @@ class MKApp extends React.Component {
         props: ws_manager match_state game_state
 
     * States:
-
+        - match_state:
+        - game_state:
 
     * Props:
     - ws_manager
@@ -43,7 +44,12 @@ class MKApp extends React.Component {
             "game_update",this.handleGameStateUpdate())
     }
     handleMatchUpdate(obj){
-        // update match state with new match register
+        /*
+        This method updates the state with the new match_state and then set state
+        :param: obj a message object with
+            key:"match_update"
+            content:"match_state" <- aka match_register obj in backend
+        */
         let new_state = {}
         for ( let key in this.state ){
             new_state.key = this.state.key
@@ -54,7 +60,12 @@ class MKApp extends React.Component {
 
     }
     handleGameStateUpdate(obj){
-        // update game state with new match register
+        /*
+        This method updates the state with the new game_state and then set state
+        :param: obj a message object with
+            key:"match_update"
+            content:"game_state" <- aka state obj in backend
+        */
         let new_state = {}
         for ( let key in this.state ){
             new_state.key = this.state.key

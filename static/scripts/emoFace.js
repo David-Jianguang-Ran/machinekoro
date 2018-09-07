@@ -1,5 +1,11 @@
 import React from "react"
 
+
+// this is simply a span object that wraps around a emoji
+const Emoji = (props) => (
+    <span role={img}>{this.props.selected_emoji}</span>
+)
+
 class EmoFace extends React.Component{
     /*
     This component
@@ -22,17 +28,28 @@ class EmoFace extends React.Component{
             "shades":"😎",
             "angry":"😡",
             "money":"🤑",
+            "sad":"😥",
+            "zzz":"😴",
+            "bot":"🤖",
+            "404":"💩"
         }
     }
     render(){
         return(
-            <div>
-                <emoji selected_emoji={this.emojis[this.props.player.emoji]}/>
+            <div className={"emo_face"}>
+                <img src={this.faces[this.props.player.face]} className={"emo_face_lg"}/>
+                <Emoji classname={"emo_face_sm"} selected_emoji={this.emojis[this.props.player.emoji]}/>
             </div>
         )
     }
 }
 
-const emoji = (props) => (
-    <span role={img}>{this.props.selected_emoji}</span>
-)
+EmoFace.defaultProps = {
+    player:{
+        face:"404",
+        emoji:"404"
+    }
+}
+
+export default EmoFace
+

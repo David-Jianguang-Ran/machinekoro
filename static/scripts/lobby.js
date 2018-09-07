@@ -1,5 +1,5 @@
 import React from "react"
-import ShareBar from "./lobbyComponents"
+import ShareBar from "./lobbyUtilityBar"
 
 class Lobby extends React.Component{
     /*
