@@ -5,7 +5,7 @@ import EmoFace from "./emoFace"
 import emojis from "./emojis.json"
 import faces from "./faces.json"
 
-class SomeLobbyPlayer extends React.Component{
+class SomePlayerLobby extends React.Component{
     /*
     This component is a emoface display and also a button to kick a player
     props:
@@ -42,4 +42,4 @@ class SomeLobbyPlayer extends React.Component{
     }
 }
 
-export default SomeLobbyPlayer
+export default SomePlayerLobby

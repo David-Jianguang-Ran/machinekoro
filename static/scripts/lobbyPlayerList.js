@@ -1,6 +1,6 @@
 import React from "react"
 
-
+import SomePlayerLobby from "./somePlayerLobby"
 
 class LobbyPlayers extends React.Component{
     /*
@@ -12,7 +12,7 @@ class LobbyPlayers extends React.Component{
         - match_state
         - context
     * Children:
-        - SomeLobbyPlayer
+        - SomePlayerLobby
             props:
             is_prime (the client)
             player
@@ -35,8 +35,8 @@ class LobbyPlayers extends React.Component{
     render(){
         return(
             <div className={"lobby_player_list"}>
-                {this.props.match_state.map((player,key) => (
-                    <SomeLobbyPlayer is_prime={this.props.cntext.is_prime}
+                {this.props.match_state.map((player) => (
+                    <SomePlayerLobby key={player.toString()} is_prime={this.props.cntext.is_prime}
                                      player={player}
                                      kickPlayerCallBack={this.kickPlayerCallBack} />
                 ))}

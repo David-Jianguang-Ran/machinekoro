@@ -43,8 +43,8 @@ class LobbyUtilityBar extends React.Component{
                 <div>
                     <EmojiChooser updateEmojiCallback={this.updateEmojiCallback}/>
                     <FaceChooser updateFaceCallback={this.updateFaceCallback}/>
-                    <MdAddToQueue onClick={this.handlePrimeCmd("add_bot")}/>
-                    <MdPlayCircleOutline onClick={this.handlePrimeCmd("start_game")}/>
+                    <MdAddToQueue onClick={this.handlePrimeCmd("add_bot")} className={"utility_button"}/>
+                    <MdPlayCircleOutline onClick={this.handlePrimeCmd("start_game")} className={"utility_button"}/>
                 </div>
             )
         } else {
