@@ -63,5 +63,6 @@ class ExpandableButtons extends React.Component {
             )
         }
     }
-
 }
+
+export default ExpandableButtons

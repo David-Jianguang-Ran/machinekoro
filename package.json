@@ -10,6 +10,7 @@
     "babel-preset-react": "^6.24.1",
     "react": "^16.4.2",
     "react-dom": "^16.4.2",
+    "react-icons": "^3.0.5",
     "react-router": "^4.3.1",
     "react-touch": "^0.4.3",
     "webpack": "^4.16.5",

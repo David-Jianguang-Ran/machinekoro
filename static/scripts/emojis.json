@@ -1,0 +1,43 @@
+{
+  "smile":{
+    "name":"smile",
+    "icon":"😃"
+  },
+  "sweat":{
+  "name":"sweat",
+  "icon":"😓"
+  },
+  "tongue":{
+  "name":"tongue",
+  "icon":"😋"
+  },
+  "shades":{
+  "name":"shades",
+  "icon":"😎"
+  },
+  "angry":{
+  "name":"angry",
+  "icon":"😡"
+  },
+  "money":{
+  "name":"money",
+  "icon":"🤑"
+  },
+  "sad":{
+  "name":"sad",
+  "icon":"😥"
+  },
+  "zzz":{
+  "name":"zzz",
+  "icon":"😴"
+  },
+  "bot":{
+  "name":"bot",
+  "icon":"🤖"
+  },
+  "404":{
+  "name":"404",
+  "icon":"💩"
+  }
+
+}

@@ -1,6 +1,7 @@
 import React from "react"
 
 
+
 class LobbyPlayers extends React.Component{
     /*
     This component displays all the players and their icon and emoji.

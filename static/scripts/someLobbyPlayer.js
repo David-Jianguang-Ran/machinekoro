@@ -1,6 +1,9 @@
+import {MdPanTool} from "react-icons/md"
 import React from "react"
 
 import EmoFace from "./emoFace"
+import emojis from "./emojis.json"
+import faces from "./faces.json"
 
 class SomeLobbyPlayer extends React.Component{
     /*
@@ -19,17 +22,20 @@ class SomeLobbyPlayer extends React.Component{
         this.props.kickPlayerCallBack(this.props.player)
     }
     render(){
+        let face_img = faces[this.props.player.face].icon
+        let emoji_img = emojis[this.props.player.emoji].icon
         if (this.props.is_prime === true){
+            // prime player has the ability to kick other players
             return (
                 <div className={"some_lobby_player"}>
-                    <EmoFace player={this.props.player}/>
-                    <button onClick={this.handleKickCmd}>Kick</button>
+                    <EmoFace face={face_img} emoji={emoji_img}/>
+                    <MdPanTool onClick={this.handleKickCmd}/>
                 </div>
             )
         } else {
             return (
                 <div className={"some_lobby_player"}>
-                    <EmoFace player={this.props.player}/>
+                    <EmoFace face={face_img} emoji={emoji_img}/>
                 </div>
             )
         }

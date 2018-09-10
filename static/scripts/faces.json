@@ -1,0 +1,23 @@
+{
+  "tiger":{
+  "name":"tiger",
+  "icon":"/static/assets/faces/tiger.jpeg"},
+  "wolf":{
+  "name":"wolf",
+  "icon":"/static/assets/faces/wolf.jpeg"},
+  "sloth":{
+  "name":"sloth",
+  "icon":"/static/assets/faces/sloth.jpeg"},
+  "owl":{
+  "name":"owl",
+  "icon":"/static/assets/faces/owl.jpeg"},
+  "horse":{
+  "name":"horse",
+  "icon":"/static/assets/faces/horse.jpeg"},
+  "flower":{
+  "name":"flower",
+  "icon":"/static/assets/faces/flower.jpeg"},
+  "404":{
+  "name":"404",
+  "icon":"/static/assets/faces/404.jpeg"}
+}

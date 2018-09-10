@@ -1,5 +1,8 @@
 import React from "react"
-import ShareBar from "./lobbyUtilityBar"
+
+import LobbyPlayers from "./lobbyPlayerList"
+import LobbyUtilityBar from "./lobbyUtilityBar"
+import ShareBar from "./shareBar"
 
 class Lobby extends React.Component{
     /*
@@ -25,3 +28,5 @@ class Lobby extends React.Component{
     }
 
 }
+
+export default Lobby
