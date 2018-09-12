@@ -582,6 +582,9 @@ class GameController:
                 state.tracker['active_player_num'] += 1
                 state.tracker['active_player_num'] = state.tracker['active_player_num'] % len(state.players)
 
+            # clean up state.temp_data
+            state.temp_data = {}
+
         return state
 
     @staticmethod

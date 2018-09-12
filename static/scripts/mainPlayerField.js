@@ -1,6 +1,6 @@
 import React from "react"
 
-import EmoBar from "./emoBar"
+import FaceBar from "./faceBar"
 import SomePlayerMain from "./somePlayerMain"
 
 
@@ -33,9 +33,9 @@ class MainPlayerField extends React.Component{
     render(){
         return(
             <div>
-                <EmoBar displayed_player={this.state.displayed_player}
-                        match_state={this.props.match_state}
-                        setDisplayedPlayerCallback={this.setDisplayedPlayerCallback()} />
+                <FaceBar displayed_player={this.state.displayed_player}
+                         match_state={this.props.match_state}
+                         setDisplayedPlayerCallback={this.setDisplayedPlayerCallback} />
                 <SomePlayerMain player={this.props.game_state.players[this.state.displayed_player]}/>
             </div>
         )

@@ -26,7 +26,7 @@ class FaceChooser extends ExpandableButton{
                     <li key={some_face.name}>
                         <image src={some_face.icon}
                                className={"emo_face_profile"} // maybe we'll need a seperate classname for css here
-                               onClick={this.props.updateFaceCallback(some_face.name)}/>
+                               onClick={() => (this.props.updateFaceCallback(some_face.name))}/>
                     </li>
                 ))}
             </ul>

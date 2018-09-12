@@ -23,7 +23,7 @@ class EmojiChooser extends ExpandableButton{
         this.expanded = (
             <ul>
                 {emojis.map(some_emoji => (
-                    <li key={some_emoji.name} onClick={this.props.updateEmojiCallback(some.emoji.icon)}>
+                    <li key={some_emoji.name} onClick={() => (this.props.updateEmojiCallback(some.emoji.icon))}>
                         <span>{some_emoji.icon}</span>
                     </li>
                 ))}

@@ -5,7 +5,7 @@ import EmoFace from "./emoFace"
 import emojis from "./emojis.json"
 import faces from "./faces.json"
 
-class EmoBar extends React.Component{
+class FaceBar extends React.Component{
     /*
     This component also has the controls needed to cycle through the carousel
     props:
@@ -24,18 +24,29 @@ class EmoBar extends React.Component{
             let data = {
                 num:key,
                 face:faces[this.props.match_state[key].face].icon,
-                emoji:emojis[this.props.match_state[key].emoji].icon
+                emoji:emojis[this.props.match_state[key].emoji].icon,
+                selected:(key == this.props.displayed_player) // i know about the type coercion, its desired here
             }
             face_list.push(data)
         }
         return(
             <div>
-                <MdKeyboardArrowLeft onClick={this.props.setDisplayedPlayerCallback(this.computeNextPlayerNum(-1))}/>
+                <MdKeyboardArrowLeft onClick={this.props.setDisplayedPlayerCallback(
+                    () =>(this.computeNextPlayerNum(-1))
+                )}/>
                 {face_list.map(obj =>(
-                    <EmoFace key={obj.num} face={obj.face} emoji={obj.emoji}/>
+                    <EmoFace key={obj.num}
+                             face={obj.face}
+                             emoji={obj.emoji}
+                             selected={obj.selected}
+                    />
                 ))}
-                <MdKeyboardArrowRight onClick={this.props.setDisplayedPlayerCallback(this.computeNextPlayerNum(1))}/>
+                <MdKeyboardArrowRight onClick={this.props.setDisplayedPlayerCallback(
+                    () =>(this.computeNextPlayerNum(1))
+                )}/>
             </div>
         )
     }
 }
+
+export default FaceBar
