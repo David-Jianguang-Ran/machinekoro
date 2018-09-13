@@ -230,9 +230,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         if event['emoji']:
             argument['emoji'] = event['emoji']
 
-
-
-
+        sync_to_async(controllers.MatchController.set_face)(argument)
 
     async def prime_process_response_complete(self,event):
         """

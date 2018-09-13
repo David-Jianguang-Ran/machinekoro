@@ -6,15 +6,11 @@ class WebSocketManager {
     // 2) in component did mount or constructor (I haven't decided/tested constructor)
     // call addMessageListener with the string key and the message handler (don't call it with ())
     constructor(url) {
-        this.outstandingMessage = false
-        this.context = null
         this.messageRoutingTable = {
-            "init_message":this.saveInitContext
         }
         this.sendJSON = this.sendJSON.bind(this)
         this.messageSwitcher = this.messageSwitcher.bind(this)
         this.addMessageListener = this.addMessageListener.bind(this)
-        this.saveInitContext = this.saveInitContext.bind(this)
         this.ws = new WebSocket(url)
         this.ws.addEventListener('message', this.messageSwitcher)
     }
@@ -25,20 +21,17 @@ class WebSocketManager {
     messageSwitcher(event) {
         let obj = JSON.parse(event.data)
         for (let key in this.messageRoutingTable) {
-            console.log(key)
             if (key == obj.key) {
                 this.messageRoutingTable[key](obj)
             }
         }
+        console.log("message recieved following message has been received")
+        console.log(obj)
     }
     addMessageListener(key, method) {
         this.messageRoutingTable[key] = method
         console.log("ws message listener added wit key" + key)
         console.log(this.messageRoutingTable)
-    }
-    saveInitContext(message){
-        const init_context = message.content
-        this.context = init_context
     }
 }
 

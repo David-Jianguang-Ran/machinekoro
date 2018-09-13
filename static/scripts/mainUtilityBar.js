@@ -12,6 +12,7 @@ class MainUtilityBar extends React.Component{
         - ws_manager
         - match_state
         - game_state
+        - is_prime
 
     children:
         - Query Responder
@@ -35,6 +36,7 @@ class MainUtilityBar extends React.Component{
                 <EmojiChooser updateEmojiCallback={this.updateEmojiCallback}/>
                 <UtilityMenu ws_manager={this.props.ws_manager}
                              match_state={this.props.match_state}
+                             is_prime={this.props.is_prime}
                 />
             </div>
         )

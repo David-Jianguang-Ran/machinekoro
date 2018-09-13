@@ -29,19 +29,33 @@ class MKApp extends React.Component {
     constructor(props){
         super(props)
         this.state = {
+            "is_prime": false,
             "match_state" : null,
             "game_state" : null
         }
         this.componentDidMount = this.componentDidMount.bind(this)
         this.handleMatchUpdate = this.handleMatchUpdate.bind(this)
         this.handleGameStateUpdate = this.handleGameStateUpdate.bind(this)
+        this.handleInitMessage = this.handleInitMessage.bind(this)
     }
     componentDidMount(){
         // and event listener for incoming message over ws connection
         this.props.ws_manager.addMessageListener(
-            "match_update",this.handleMatchUpdate())
+            "match_update",this.handleMatchUpdate)
         this.props.ws_manager.addMessageListener(
-            "game_update",this.handleGameStateUpdate())
+            "game_update",this.handleGameStateUpdate)
+        this.props.ws_manager.addMessageListener(
+            "init_message",this.handleInitMessage)
+    }
+    handleInitMessage(obj){
+        /*
+        This method updates the state with the new match_state and then set state
+        :param: obj a message object with
+            key:"init_message"
+            content:"prime register obj" <- aka match_register obj in backend
+                - is_prime : bool determines privileges
+        */
+        this.setState({is_prime:obj.content.is_prime})
     }
     handleMatchUpdate(obj){
         /*
@@ -50,13 +64,7 @@ class MKApp extends React.Component {
             key:"match_update"
             content:"match_state" <- aka match_register obj in backend
         */
-        let new_state = {}
-        for ( let key in this.state ){
-            new_state.key = this.state.key
-        }
-        new_state.match_state = obj.content
-
-        this.setState({new_state})
+        this.setState({match_state:obj.content})
 
     }
     handleGameStateUpdate(obj){
@@ -66,25 +74,22 @@ class MKApp extends React.Component {
             key:"match_update"
             content:"game_state" <- aka state obj in backend
         */
-        let new_state = {}
-        for ( let key in this.state ){
-            new_state.key = this.state.key
-        }
-        new_state.game_state = obj.content
-
-        this.setState({new_state})
-
+        this.setState({game_state:obj.content})
     }
     render(){
         if (this.state.match_state == null){
             return (<LoadingDoodad/>)
         } else if (this.state.game_state == null) {
             return (<Lobby ws_manager={this.props.ws_manager}
-                           match_state={this.state.match_state}/>)
+                           match_state={this.state.match_state}
+                           is_prime={this.state.is_prime}
+            />)
         } else {
             return (<Main ws_manager={this.props.ws_manager}
                           match_state={this.state.match_state}
-                          game_state={this.state.game_state}/>)
+                          game_state={this.state.game_state}
+                          is_prime={this.state.is_prime}
+            />)
         }
     }
 }

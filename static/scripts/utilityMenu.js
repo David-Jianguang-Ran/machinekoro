@@ -1,15 +1,16 @@
-import { MdMenu, MdBugReport, MdExitToApp, MdPanTool } from "react-icons/md"
+import { MdMenu, MdBugReport, MdExitToApp, } from "react-icons/md"
 import React from "react"
 
 
 import ExpandableButton from "./expandableButton"
 import KickPlayerMenu from "./kickPlayerMenu"
 
-class UtilityButton extends ExpandableButton{
+class UtilityMenu extends ExpandableButton{
     /*
     props:
         - ws_manager
         - match_state
+        - is_prime
 
     children:
         <for prime player>
@@ -21,30 +22,21 @@ class UtilityButton extends ExpandableButton{
     constructor(props){
         super(props)
         this.button =(<MdMenu/>)
-        this.expanded = this.prepareMenu()
-    }
-    reportBug(){
-
-    }
-    prepareMenu(){
-        if (this.props.ws_manager.context.is_prime === true){
-            return(
-                <div className={"utility_menu"}>
+        this.expanded = (
+            <div className={"utility_menu"}>
                     <div className={"utility_button"}>
-                        <MdExitToApp onClick={}/>
+                        <MdExitToApp onClick={window.close()}/>
                     </div>
                     <div className={"utility_button"}>
-                        <MdBugReport onClick={this.reportBug}/>
+                        <MdBugReport onClick={window.close()}/>
                     </div>
                     <KickPlayerMenu ws_manager={this.props.ws_manager}
                                     game_state={this.props.game_state}
+                                    is_prime={this.props.is_prime}
                     />
-                </div>
-            )
-        } else {
-
-        }
+            </div>
+        )
     }
-
-
 }
+
+export default UtilityMenu

@@ -9,6 +9,7 @@ class Main extends React.Component{
     - ws_manager
     - match_state
     - game_state
+    - is_prime
 
     children:
     - player field (homemade carousel component)
@@ -25,8 +26,12 @@ class Main extends React.Component{
     render(){
         return(
             <div className={"full_screen_component"}>
-                <MainPlayerField match_state={this.props.match_state} game_state={this.props.game_state}/>
-                <MainUtilityBar match_state={this.props.match_state} ws_manager={this.props.ws_manager}/>
+                <MainPlayerField match_state={this.props.match_state}
+                                 game_state={this.props.game_state}/>
+                <MainUtilityBar match_state={this.props.match_state}
+                                is_prime={this.props.is_prime}
+                                ws_manager={this.props.ws_manager}
+                />
             </div>
         )
     }

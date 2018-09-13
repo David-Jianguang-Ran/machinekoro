@@ -12,6 +12,7 @@ class LobbyUtilityBar extends React.Component{
     props:
     - ws_manager
     - context (register obj)
+    - is_prime
 
     child components:
     - face chooser <expandable buttons>
@@ -38,7 +39,7 @@ class LobbyUtilityBar extends React.Component{
         this.props.ws_manager.sendJSON(message)
     }
     render(){
-        if (this.props.context.is_prime === true){
+        if (this.props.is_prime === true){
             return(
                 <div>
                     <EmojiChooser updateEmojiCallback={this.updateEmojiCallback}/>

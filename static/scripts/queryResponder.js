@@ -1,4 +1,4 @@
-import React from "./react"
+import React from "react"
 
 import ButtonWithAlert from "./buttonWithAlert"
 import QueryElement from "./queryElement"
@@ -37,9 +37,7 @@ class QueryResponder extends React.Component{
     toggleExpansion(){
         this.setState({
             "expanded": ! this.state.expanded ,
-            "query_set": this.state.query_set,
-            "response_set": this.state.query_set
-        })
+            })
     }
     handleIncomingQuerySet(message){
         // this method
@@ -52,7 +50,6 @@ class QueryResponder extends React.Component{
             query_set.push(query)
         }
         this.setState({
-            "expanded": this.state.expanded ,
             "query_set": query_set,
             "response_set":null
         })

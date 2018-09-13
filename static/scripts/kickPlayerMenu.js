@@ -1,4 +1,4 @@
-import {MdPanTool } from "react-icons/md"
+import { MdPanTool } from "react-icons/md"
 import React from "react"
 
 
@@ -10,6 +10,7 @@ class KickPlayerMenu extends ExpandableButton{
     props:
     - ws_manager
     - match_state
+    - is_prime
 
     */
     constructor(props){
@@ -18,6 +19,7 @@ class KickPlayerMenu extends ExpandableButton{
         this.expanded = (
             <LobbyPlayerList ws_manager={this.props.ws_manager}
                              match_state={this.props.match_state}
+                             is_prime={this.props.is_prime}
             />
         )
     }
