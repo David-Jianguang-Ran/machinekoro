@@ -42,6 +42,8 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
     - process_client_response
 
+    - process_client_update
+
     methods available only to prime player:
 
 
@@ -53,6 +55,9 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         it also updates the token record with new channel name
         :return: None
         """
+        # wait for successful connection
+        await self.accept()
+
         # initialize some vars
         self.register = None
         self.register_prime = None
@@ -74,12 +79,11 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             "content":self.register
         }
 
-        # wait for successful connection
-        await self.accept()
         # send init message / add consumer to match session  (channel layer group)
-        self.send_json(message)
-        self.channel_layer.group_add(match_id,self.channel_name)
-        pass
+        await self.send_json(message)
+        await self.channel_layer.group_add(match_id,self.channel_name)
+
+        controllers.silly_print("init message sent to client",message)
 
     async def prime_register_update(self,event):
         """
@@ -209,6 +213,26 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             }
 
             await self.channel_layer.send(prime_channel, message)
+
+    async def process_client_face_update(self, event):
+        """
+        This method is called by the client with the key ""
+        this method will use match controller to update match register
+        :param event:
+        :return:
+        """
+        argument = {
+            "match_id":self.register['match_id'],
+            "player_num":self.register['player_num']
+        }
+        if event['face']:
+            argument['face'] = event['face']
+        if event['emoji']:
+            argument['emoji'] = event['emoji']
+
+
+
+
 
     async def prime_process_response_complete(self,event):
         """
@@ -499,6 +523,11 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         # look up key and route message
         if content["key"] == "prime_player_command":
             await self.prime_player_command(content)
+        elif content["key"] == "query_response":
+            await self.process_client_response(content)
+        elif content["key"] == "face_update":
+            await self.process_client_face_update(content)
+
         pass
 
     @staticmethod

@@ -44,7 +44,7 @@ class MatchController:
     """
     This object has methods needed to manage data needed for PlayerConsumer
 
-    O instance variables:
+    O instance variables: (i dont know why, they seem like class var -_-)
     - token_namespace = uuid namespace used to generate token
     - match_namespace = uuid namespace used to generate match_id
 
@@ -55,6 +55,12 @@ class MatchController:
     - add_player_to_match
 
     O methods callable by consumers:
+
+    - initialize_by_token
+
+    - handle_player_disconnect
+
+    - set_face
 
     # fancy feature, ignore for now
     - update_player_name
@@ -68,6 +74,9 @@ class MatchController:
     - __register_to_token_table
 
     """
+    allowed_faces = ["tiger","wolf","sloth","owl","horse","flower"]
+    allowed_emojis = ["smile","sweat","tongue","shades","angry","money","sad","zzz"]
+
     def __init__(self):
         self.token_namespace = uuid.UUID('e1051943-f6d0-47b0-944d-2f7004d92804')
         self.match_namespace = uuid.UUID('ea29425f-ebb4-45aa-ae46-18e28b0dd650')
@@ -124,6 +133,8 @@ class MatchController:
                 'player_num': num_str,
                 'is_prime': prime,
                 'is_bot': bot,
+                'face':"404",
+                'emoji':"smile"
                 # should i add a customizable name & portrait here?
         }
         match_register[num_str] = register_entry
@@ -232,6 +243,7 @@ class MatchController:
         prime_register = json.loads(match_obj.register)
         # set disconnected player to bot
         discon_register['is_bot'] = True
+        discon_register['emoji'] = "bot"
         if discon_register['is_prime']:
             # choose one from a list of num of human players
             human_players = [key for key in prime_register if not prime_register[key]['is_bot']]
@@ -251,6 +263,44 @@ class MatchController:
         message = {
             "type": "prime.register.update",
             "content": prime_register_json
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(match_id, message)
+
+    @staticmethod
+    def set_face(argument):
+        """
+
+        :param argument:  = {
+            "match_id":self.register['match_id'],
+            "player_num":self.register['player_num']
+            "face":some face name
+            "emoji":some emoji name
+        }
+        :return:
+        """
+        # heres some vars
+        player_num = argument['player_num']
+        match_id = argument['match_id']
+        # look up the match session
+        match_obj = models.MatchSession.objects.get(match_id=match_id)
+
+        match_register = json.loads(match_obj.register)
+
+        # validate then modify
+        if argument['face'] in MatchController.allowed_faces:
+            match_register[player_num]['face'] = argument['face']
+        if argument['emoji'] in MatchController.allowed_emojis:
+            match_register[player_num]['emoji'] = argument['emoji']
+
+        # save to db
+        match_obj.register = json.dumps(match_register)
+        match_obj.save()
+
+        # broad cast new register into room
+        message = {
+            "type": "prime.register.update",
+            "content": match_register
         }
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(match_id, message)
