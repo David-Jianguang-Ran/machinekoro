@@ -99,5 +99,6 @@ class QueryResponder extends React.Component{
             )
         }
     }
-
 }
+
+export default QueryResponder

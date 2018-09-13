@@ -10,7 +10,6 @@ class LobbyPlayers extends React.Component{
     * props:
         - ws_manager
         - match_state
-        - context
     * Children:
         - SomePlayerLobby
             props:
@@ -36,7 +35,7 @@ class LobbyPlayers extends React.Component{
         return(
             <div className={"lobby_player_list"}>
                 {this.props.match_state.map((player) => (
-                    <SomePlayerLobby key={player.toString()} is_prime={this.props.cntext.is_prime}
+                    <SomePlayerLobby key={player.toString()} is_prime={this.props.ws_manager.context.is_prime}
                                      player={player}
                                      kickPlayerCallBack={this.kickPlayerCallBack} />
                 ))}

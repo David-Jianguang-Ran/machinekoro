@@ -29,7 +29,10 @@ class SomePlayerLobby extends React.Component{
             return (
                 <div className={"some_lobby_player"}>
                     <EmoFace face={face_img} emoji={emoji_img}/>
-                    <MdPanTool onClick={this.handleKickCmd}/>
+                    <div>
+                        <MdPanTool onClick={this.handleKickCmd}/>
+                        <h6>Kick Player</h6>
+                    </div>
                 </div>
             )
         } else {
