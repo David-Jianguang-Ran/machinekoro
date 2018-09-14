@@ -2,7 +2,7 @@ import React from "react"
 
 import SomePlayerLobby from "./somePlayerLobby"
 
-class LobbyPlayers extends React.Component{
+class LobbyPlayerList extends React.Component{
     /*
     This component displays all the players and their icon and emoji.
     For prime player, this component also can send messages to kick a particular player
@@ -33,9 +33,10 @@ class LobbyPlayers extends React.Component{
         this.props.ws_manager.sendJSON(message)
     }
     render(){
+
         return(
             <div className={"lobby_player_list"}>
-                {this.props.match_state.map((player) => (
+                {Object.values(this.props.match_state).map((player) => (
                     <SomePlayerLobby key={player.toString()}
                                      is_prime={this.props.is_prime}
                                      player={player}
@@ -46,4 +47,4 @@ class LobbyPlayers extends React.Component{
     }
 }
 
-export default LobbyPlayers
+export default LobbyPlayerList

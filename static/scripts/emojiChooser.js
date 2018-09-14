@@ -3,7 +3,7 @@ import React from "react"
 
 
 import ExpandableButton from "./expandableButton"
-import emojis from "./faces"
+import emojis from "./emojis"
 
 class EmojiChooser extends ExpandableButton{
     /*
@@ -22,9 +22,9 @@ class EmojiChooser extends ExpandableButton{
         )
         this.expanded = (
             <ul>
-                {emojis.map(some_emoji => (
-                    <li key={some_emoji.name} onClick={() => (this.props.updateEmojiCallback(some.emoji.icon))}>
-                        <span>{some_emoji.icon}</span>
+                {Object.values(emojis).map(emoji => (
+                    <li key={emoji.name} onClick={() => (this.props.updateEmojiCallback(emoji.icon))}>
+                        <span>{emoji.icon}</span>
                     </li>
                 ))}
             </ul>

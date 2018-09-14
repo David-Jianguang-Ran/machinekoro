@@ -34,7 +34,7 @@ class LobbyUtilityBar extends React.Component{
     handlePrimeCmd(cmd){
         let message = {
             "key":"prime.player.command",
-            "cmd":"cmd"
+            "cmd":cmd
         }
         this.props.ws_manager.sendJSON(message)
     }
@@ -44,8 +44,8 @@ class LobbyUtilityBar extends React.Component{
                 <div>
                     <EmojiChooser updateEmojiCallback={this.updateEmojiCallback}/>
                     <FaceChooser updateFaceCallback={this.updateFaceCallback}/>
-                    <MdAddToQueue onClick={this.handlePrimeCmd("add_bot")} className={"utility_button"}/>
-                    <MdPlayCircleOutline onClick={this.handlePrimeCmd("start_game")} className={"utility_button"}/>
+                    <MdAddToQueue onClick={() => (this.handlePrimeCmd("add_bot"))} className={"utility_button"}/>
+                    <MdPlayCircleOutline onClick={() => (this.handlePrimeCmd("add_bot"))} className={"utility_button"}/>
                 </div>
             )
         } else {

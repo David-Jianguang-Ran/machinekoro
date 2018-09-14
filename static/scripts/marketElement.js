@@ -8,7 +8,7 @@ import Card from "./card"
 const MarketElement = (props) => (
     <div className={"sub_pop_up"}>
         <h6>{this.props.title}</h6>
-        {this.peops.card_list.map((card,i) => (
+        {this.props.card_list.map((card,i) => (
             <Card name={card} key={i}/>
         ))}
     </div>

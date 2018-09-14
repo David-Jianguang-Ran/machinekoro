@@ -13,6 +13,7 @@ class WebSocketManager {
         this.addMessageListener = this.addMessageListener.bind(this)
         this.ws = new WebSocket(url)
         this.ws.addEventListener('message', this.messageSwitcher)
+        this.ws.addEventListener('onClose', () => (console.log(event)))
     }
     sendJSON(obj) {
         let data = JSON.stringify(obj)

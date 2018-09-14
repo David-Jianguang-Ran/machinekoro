@@ -7,12 +7,12 @@ class ShareBar extends React.Component{
     render(){
         // sorry for the hard coded url....  NoteK@ieg
         let url ="http://127.0.0.1:8000/machinekoro/join"
-        url.concat(this.props.context.match_id)
+        url.concat(this.props.match_id)
         return(
             <div id={"share_bar"}>
                 <label>
                     Share the following link to invite friends to a game!
-                    <input type={text} defaultValue={url}/>
+                    <a>url</a>
                 </label>
             </div>
         )

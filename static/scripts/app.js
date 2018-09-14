@@ -23,15 +23,14 @@ class MKApp extends React.Component {
     * Props:
     - ws_manager
 
-
-
     */
     constructor(props){
         super(props)
         this.state = {
             "is_prime": false,
             "match_state" : null,
-            "game_state" : null
+            "game_state" : null,
+            "match_id":null
         }
         this.componentDidMount = this.componentDidMount.bind(this)
         this.handleMatchUpdate = this.handleMatchUpdate.bind(this)
@@ -55,7 +54,10 @@ class MKApp extends React.Component {
             content:"prime register obj" <- aka match_register obj in backend
                 - is_prime : bool determines privileges
         */
-        this.setState({is_prime:obj.content.is_prime})
+        this.setState({
+            is_prime:obj.content.is_prime,
+            match_id:obj.content.match_id
+        })
     }
     handleMatchUpdate(obj){
         /*
@@ -64,6 +66,8 @@ class MKApp extends React.Component {
             key:"match_update"
             content:"match_state" <- aka match_register obj in backend
         */
+        console.log("saving match_state to MKapp.state")
+        console.log(typeof obj.content)
         this.setState({match_state:obj.content})
 
     }
@@ -83,6 +87,7 @@ class MKApp extends React.Component {
             return (<Lobby ws_manager={this.props.ws_manager}
                            match_state={this.state.match_state}
                            is_prime={this.state.is_prime}
+                           match_id={this.state.match_id}
             />)
         } else {
             return (<Main ws_manager={this.props.ws_manager}
