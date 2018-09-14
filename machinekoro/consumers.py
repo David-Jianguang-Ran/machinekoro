@@ -516,15 +516,14 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         """
         # debug print incoming message from client
         controllers.silly_print("incoming ws message from client",message)
-        content = json.loads(message['content'])
 
         # look up key and route message
-        if content["key"] == "prime_player_command":
-            await self.prime_player_command(content)
-        elif content["key"] == "query_response":
-            await self.process_client_response(content)
-        elif content["key"] == "face_update":
-            await self.process_client_face_update(content)
+        if message["key"] == "prime_player_command":
+            await self.prime_player_command(message)
+        elif message["key"] == "query_response":
+            await self.process_client_response(message)
+        elif message["key"] == "face_update":
+            await self.process_client_face_update(message)
 
         pass
 
