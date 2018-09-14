@@ -7,6 +7,7 @@ class WebSocketManager {
     // call addMessageListener with the string key and the message handler (don't call it with ())
     constructor(url) {
         this.messageRoutingTable = {
+            "alert":alert
         }
         this.sendJSON = this.sendJSON.bind(this)
         this.messageSwitcher = this.messageSwitcher.bind(this)

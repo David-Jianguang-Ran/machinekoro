@@ -21,13 +21,13 @@ class FaceChooser extends ExpandableButton{
             </div>
         )
         this.expanded = (
-            <ul>
+            <div>
                 {Object.values(faces).map(face => (
-                    <li key={face.name} onClick={() => (this.props.updateEmojiCallback(face.icon))}>
+                    <div key={face.name} onClick={() => (this.props.updateFaceCallback(face.name))}>
                         <span>{face.icon}</span>
-                    </li>
+                    </div>
                 ))}
-            </ul>
+            </div>
         )
     }
 }

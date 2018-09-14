@@ -25,11 +25,21 @@ class LobbyUtilityBar extends React.Component{
         this.updateFaceCallback = this.updateFaceCallback.bind(this)
         this.handlePrimeCmd = this.handlePrimeCmd.bind(this)
     }
-    updateFaceCallback(){
+    updateFaceCallback(face_name){
         // fill in message once back end has been updated
+        let message = {
+            "key":"face.update",
+            "face":face_name
+        }
+        this.props.ws_manager.sendJSON(message)
     }
-    updateEmojiCallback(){
+    updateEmojiCallback(emoji_name){
         // fill in message once back end has been updated
+        let message = {
+            "key":"face.update",
+            "emoji":emoji_name
+        }
+        this.props.ws_manager.sendJSON(message)
     }
     handlePrimeCmd(cmd){
         let message = {
@@ -41,19 +51,18 @@ class LobbyUtilityBar extends React.Component{
     render(){
         if (this.props.is_prime === true){
             return(
-                <div>
-                    <EmojiChooser updateEmojiCallback={this.updateEmojiCallback}/>
-                    <FaceChooser updateFaceCallback={this.updateFaceCallback}/>
+                <div className={"utility_bar"}>
+                    <EmojiChooser updateEmojiCallback={this.updateEmojiCallback} className={"utility_button"}/>
+                    <FaceChooser updateFaceCallback={this.updateFaceCallback} className={"utility_button"}/>
                     <MdAddToQueue onClick={() => (this.handlePrimeCmd("add_bot"))} className={"utility_button"}/>
                     <MdPlayCircleOutline onClick={() => (this.handlePrimeCmd("add_bot"))} className={"utility_button"}/>
                 </div>
             )
         } else {
             return (
-                <div>
-                    <EmojiChooser updateEmojiCallback={this.updateEmojiCallback}/>
-                    <FaceChooser updateFaceCallback={this.updateFaceCallback}/>
-
+                <div className={"utility_bar"}>
+                    <EmojiChooser updateEmojiCallback={this.updateEmojiCallback} className={"utility_button"}/>
+                    <FaceChooser updateFaceCallback={this.updateFaceCallback} className={"utility_button"}/>
                 </div>
             )
         }

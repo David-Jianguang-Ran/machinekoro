@@ -18,13 +18,17 @@ class LobbyPlayerList extends React.Component{
             player
             kickPlayerCallBack
     */
+    constructor(props){
+        super(props)
+        this.kickPlayerCallBack = this.kickPlayerCallBack.bind(this)
+    }
     kickPlayerCallBack(target_player){
         /*
         This method sends a message with this.props.ws_manager to kick the player whos info is passed in
         :param: target_player: player_register obj
         :return: nothing, sends a ws message
         */
-        let player_num = target_player.num
+        let player_num = target_player.player_num
         const message = {
             key:"prime.player.command",
             cmd:"kick_player",
@@ -37,7 +41,7 @@ class LobbyPlayerList extends React.Component{
         return(
             <div className={"lobby_player_list"}>
                 {Object.values(this.props.match_state).map((player) => (
-                    <SomePlayerLobby key={player.toString()}
+                    <SomePlayerLobby key={player.player_num}
                                      is_prime={this.props.is_prime}
                                      player={player}
                                      kickPlayerCallBack={this.kickPlayerCallBack} />

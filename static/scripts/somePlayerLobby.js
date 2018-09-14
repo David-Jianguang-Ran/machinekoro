@@ -31,7 +31,7 @@ class SomePlayerLobby extends React.Component{
                     <EmoFace face={face_img} emoji={emoji_img}/>
                     <div>
                         <MdPanTool onClick={this.handleKickCmd}/>
-                        <h6>Kick Player</h6>
+                        <p>Kick Player</p>
                     </div>
                 </div>
             )

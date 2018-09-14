@@ -76,12 +76,14 @@ class MatchController:
     """
     allowed_faces = ["tiger","wolf","sloth","owl","horse","flower"]
     allowed_emojis = ["smile","sweat","tongue","shades","angry","money","sad","zzz"]
+    token_namespace = uuid.UUID('e1051943-f6d0-47b0-944d-2f7004d92804')
+    match_namespace = uuid.UUID('ea29425f-ebb4-45aa-ae46-18e28b0dd650')
 
     def __init__(self):
-        self.token_namespace = uuid.UUID('e1051943-f6d0-47b0-944d-2f7004d92804')
-        self.match_namespace = uuid.UUID('ea29425f-ebb4-45aa-ae46-18e28b0dd650')
+        pass
 
-    def initialize_new_match(self):
+    @staticmethod
+    def initialize_new_match():
         """
         this method creates a new match session and assign it with a match_uuid
         all other fields are left blank until a match starts
@@ -89,7 +91,7 @@ class MatchController:
         """
         # make a uuid string based on time stamp and rand num
         timestamp_plus_some = str(int(time.time())) + str(random.random())
-        match_id_str = str(uuid.uuid5(self.match_namespace, timestamp_plus_some))
+        match_id_str = str(uuid.uuid5(MatchController.match_namespace, timestamp_plus_some))
         register_json = json.dumps({})  # is dumping nothing necessary?
 
         # create MatchSession model
@@ -97,7 +99,8 @@ class MatchController:
         match_obj.save()
         return match_id_str
 
-    def add_player_to_match(self, match_id, prime=False, bot=False):
+    @staticmethod
+    def add_player_to_match(match_id, prime=False, bot=False):
         """
         -note- first player in any game should always be prime
         this sync method could be called by both views and consumers!
@@ -153,10 +156,11 @@ class MatchController:
 
         # if new player is a human player, add register to TokenRegister model
         if not bot:
-            token = self.__register_to_token_table(register_entry, match_id)
+            token = MatchController.__register_to_token_table(register_entry, match_id)
             return token
 
-    def __register_to_token_table(self, content, match_id):
+    @staticmethod
+    def __register_to_token_table(content, match_id):
         """
         this method takes some content(consumer init data obj) and a match_id
         does proper storage in db, and return a uuid string(i know it's not a real uuid)
@@ -165,7 +169,7 @@ class MatchController:
         :return: token( uuid string )
         """
         content_json = json.dumps(content)
-        token_str = str(uuid.uuid5(self.token_namespace,content_json))
+        token_str = str(uuid.uuid5(MatchController.token_namespace,content_json))
 
         # look up match obj
         match_obj = models.MatchSession.objects.get(match_id=match_id)
@@ -262,7 +266,7 @@ class MatchController:
         # send update to group
         message = {
             "type": "prime.register.update",
-            "content": prime_register_json
+            "content": prime_register
         }
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(match_id, message)

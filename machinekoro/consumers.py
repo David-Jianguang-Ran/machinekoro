@@ -69,7 +69,6 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
         # copy register to memory
         self.register = register_content
-        controllers.silly_print("PlayerConsumer init with the following register content",register_content)
 
         match_id = self.register['match_id']
 
@@ -214,23 +213,25 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
 
             await self.channel_layer.send(prime_channel, message)
 
-    async def process_client_face_update(self, event):
+    async def process_client_face_update(self, message):
         """
         This method is called by the client with the key ""
         this method will use match controller to update match register
-        :param event:
+        :param message:
         :return:
         """
+        controllers.silly_print("face changer activated",message)
         argument = {
             "match_id":self.register['match_id'],
             "player_num":self.register['player_num']
         }
-        if event['face']:
-            argument['face'] = event['face']
-        if event['emoji']:
-            argument['emoji'] = event['emoji']
+        for some_type in ['face','emoji']:
+            try:
+                argument[some_type] = message[some_type]
+            except KeyError:
+                continue
 
-        sync_to_async(controllers.MatchController.set_face)(argument)
+        await sync_to_async(controllers.MatchController.set_face)(argument)
 
     async def prime_process_response_complete(self,event):
         """
@@ -428,6 +429,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         :return:
         """
         cmd = message['cmd']
+        controllers.silly_print("command module activated",message)
 
         if cmd == "start_game" and self.register['is_prime']:
             # send channel_layer initial turn process request msg to GameProcessor
@@ -444,7 +446,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
             match_id = self.register['match_id']
             none_value = await sync_to_async\
                 (controllers.MatchController.add_player_to_match)\
-                (controllers.MatchController(),match_id,prime=False,bot=True)
+                (match_id,bot=True)
             controllers.silly_print("bot player requested in game",self.register['match_id'])
 
         elif cmd == "kick_player" and self.register['is_prime']:
@@ -459,10 +461,12 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
                 "key":"alert",
                 "content": "You have been removed from the game and replaced by bot"
             }
+            if not target_register['is_bot']:
+                self.channel_layer.group_discard(self.register['match_id'], target_register['self_channel_name'])
+                self.channel_layer.send(target_register['self_channel_name'], message)
 
             await sync_to_async(controllers.MatchController.handle_player_disconnect)(target_register)
-            await self.channel_layer.group_discard(self.register['match_id'], target_register['self_channel_name'])
-            await self.channel_layer.send(target_register['self_channel_name'],message)
+
 
         else:
             print(str(self.__doc__)+"prime command ignored key="+cmd)
@@ -507,7 +511,7 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         await sync_to_async(controllers.MatchController.handle_player_disconnect)(self.register)
         await self.channel_layer.group_discard(self.register['match_id'],self.channel_name)
 
-    async def receive_json(self, message, **kwargs):
+    async def receive_json(self, content, **kwargs):
         """
         This method takes message from ws connection (client) and routes based on type
         :param content:
@@ -515,18 +519,17 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         :return:
         """
         # debug print incoming message from client
-        controllers.silly_print("incoming ws message from client",message)
-        content = json.loads(message['content'])
+        controllers.silly_print("incoming ws message from client",content)
+        controllers.silly_print("prime_register of receiving socket",self.register)
 
         # look up key and route message
-        if content["key"] == "prime_player_command":
+        if content["key"] == "prime.player.command":
             await self.prime_player_command(content)
-        elif content["key"] == "query_response":
+        elif content["key"] == "query.response":
             await self.process_client_response(content)
-        elif content["key"] == "face_update":
+        elif content["key"] == "face.update":
             await self.process_client_face_update(content)
 
-        pass
 
     @staticmethod
     async def __block_until_false(some_boolian, freq=0.5):

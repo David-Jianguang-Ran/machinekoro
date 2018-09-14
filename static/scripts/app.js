@@ -68,7 +68,14 @@ class MKApp extends React.Component {
         */
         console.log("saving match_state to MKapp.state")
         console.log(typeof obj.content)
-        this.setState({match_state:obj.content})
+        // i dont know wtf is going on here, sometimes match_state is string, sometimes it is obj?
+        let new_m_state = null
+        if (typeof obj.content === "string"){
+            new_m_state = JSON.parse(obj.content)
+        } else {
+            new_m_state = obj.content
+        }
+        this.setState({match_state: new_m_state})
 
     }
     handleGameStateUpdate(obj){
