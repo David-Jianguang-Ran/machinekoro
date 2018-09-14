@@ -52,6 +52,8 @@ class MatchController:
 
     - initialize_new_match
 
+    - add_player_to_match
+
     O methods callable by consumers:
 
     - initialize_by_token
@@ -59,12 +61,6 @@ class MatchController:
     - handle_player_disconnect
 
     - set_face
-
-    O methods callable by both:
-
-    - add_player_to_match
-
-    - send_register_update
 
     # fancy feature, ignore for now
     - update_player_name
@@ -76,8 +72,6 @@ class MatchController:
     O private methods:
 
     - __register_to_token_table
-
-    - send_register_update
 
     """
     allowed_faces = ["tiger","wolf","sloth","owl","horse","flower"]
@@ -141,12 +135,17 @@ class MatchController:
                 'is_bot': bot,
                 'face':"404",
                 'emoji':"smile"
-                # should i add a customizable name & portrait here? done
+                # should i add a customizable name & portrait here?
         }
         match_register[num_str] = register_entry
 
-        # broadcast
-        MatchController.send_register_update(match_id, match_register)
+        # broad cast new register into room
+        message = {
+            "type": "prime.register.update",
+            "content": match_register
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(match_id, message)
 
         # saves match register to db
         match_obj.register = json.dumps(match_register)
@@ -181,19 +180,6 @@ class MatchController:
         return token_str
 
     @staticmethod
-    def send_register_update(match_id,match_register=None):
-        if not match_register:
-            match = models.MatchSession.objects.get(match_id=match_id)
-            match_register = json.loads(match.register)
-
-        message = {
-            "type": "prime.register.update",
-            "content": match_register
-        }
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.send)(match_id,message)
-
-    @staticmethod
     def initialize_by_token(token_str,channel_name):
         """
         This method looks up setting dict by token, does modification based on consumer name then return it
@@ -210,7 +196,6 @@ class MatchController:
         player_num = str(content['player_num'])
         #     player num is string here (key of  prime register and player list are both strings)
         content['self_channel_name'] = channel_name
-        content['is_bot'] = False
 
         # gets MatchSession object
         match_obj = models.MatchSession.objects.get(match_id=match_id)
@@ -225,7 +210,12 @@ class MatchController:
         # if this is not the first player(prime player) in a game,
         # send a message in channel_layer to all in group to update new player info
         if not content['is_prime']:
-            MatchController.send_register_update(match_id,prime_register)
+            message = {
+                "type": "prime.register.update",
+                "content": prime_register  # do i need to serialize this ? I hope not
+            }
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(match_id, message)
 
         # save new content to db
         register_obj.content = json.dumps(content)
@@ -269,8 +259,13 @@ class MatchController:
         match_obj.register = prime_register_json
         match_obj.save()
 
-        # broadcast
-        MatchController.send_register_update(match_id, prime_register)
+        # send update to group
+        message = {
+            "type": "prime.register.update",
+            "content": prime_register_json
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(match_id, message)
 
     @staticmethod
     def set_face(argument):
@@ -302,8 +297,13 @@ class MatchController:
         match_obj.register = json.dumps(match_register)
         match_obj.save()
 
-        # broadcast
-        MatchController.send_register_update(match_id, match_register)
+        # broad cast new register into room
+        message = {
+            "type": "prime.register.update",
+            "content": match_register
+        }
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(match_id, message)
 
 
 class GameController:
