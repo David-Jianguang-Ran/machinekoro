@@ -220,7 +220,6 @@ class PlayerWSConsumer(AsyncJsonWebsocketConsumer):
         :param message:
         :return:
         """
-        controllers.silly_print("face changer activated",message)
         argument = {
             "match_id":self.register['match_id'],
             "player_num":self.register['player_num']

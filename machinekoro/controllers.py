@@ -283,6 +283,7 @@ class MatchController:
         }
         :return:
         """
+        silly_print("face changer activated", argument)
         # heres some vars
         player_num = argument['player_num']
         match_id = argument['match_id']
@@ -291,11 +292,21 @@ class MatchController:
 
         match_register = json.loads(match_obj.register)
 
-        # validate then modify
-        if argument['face'] in MatchController.allowed_faces:
-            match_register[player_num]['face'] = argument['face']
-        if argument['emoji'] in MatchController.allowed_emojis:
-            match_register[player_num]['emoji'] = argument['emoji']
+        try:
+            if argument['face'] in MatchController.allowed_faces:
+                match_register[player_num]['face'] = argument['face']
+            else:
+                silly_print("abnormal client input detected in game", match_id)
+        except KeyError:
+            pass
+
+        try:
+            if argument['emoji'] in MatchController.allowed_emojis:
+                match_register[player_num]['emoji'] = argument['emoji']
+            else:
+                silly_print("abnormal client input detected in game", match_id)
+        except KeyError:
+            pass
 
         # save to db
         match_obj.register = json.dumps(match_register)
