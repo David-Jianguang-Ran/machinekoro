@@ -16,8 +16,8 @@ class FaceChooser extends ExpandableButton{
     constructor(props){
         super(props)
         this.button = (
-            <div className={"utility_button"}>
-                <MdFace/>
+            <div>
+                <MdFace className={"utility_button"}/>
             </div>
         )
         this.expanded = (

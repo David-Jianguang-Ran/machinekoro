@@ -16,8 +16,8 @@ class EmojiChooser extends ExpandableButton{
     constructor(props){
         super(props)
         this.button = (
-            <div className={"utility_button"}>
-                <MdSentimentSatisfied/>
+            <div>
+                <MdSentimentSatisfied className={"utility_button"}/>
             </div>
         )
         this.expanded = (

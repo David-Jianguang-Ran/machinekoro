@@ -13,6 +13,7 @@ class ShareBar extends React.Component{
             <div id={"share_bar"}>
                 <label>
                     <span>Share the following link to invite friends to a game!</span>
+                    <br/>
                     <a>{url}</a>
                 </label>
             </div>
