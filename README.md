@@ -1,5 +1,5 @@
 # MachineKoro
-A online multiplayer game based on the board game Machi-Koro
+A WIP online multiplayer game based on the board game Machi-Koro
 
 Using Django Channels and React.js
 
